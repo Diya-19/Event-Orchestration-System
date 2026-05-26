@@ -65,5 +65,53 @@ export interface DashboardData {
   leaderboard_preview: Team[];
 
 }
+export interface ApprovalRequest {
 
+id:string;
 
+team_id:string;
+
+requested_by:string;
+
+type:string;
+
+payload?:
+Record<
+string,
+unknown
+>;
+
+status:
+
+"pending"
+
+|
+
+"approved"
+
+|
+
+"rejected";
+
+notes?:
+string;
+
+created_at:string;
+
+}
+
+export interface UploadResult {
+
+loaded:number;
+
+skipped:number;
+
+errors:{
+
+row:number;
+
+reason:string;
+
+}[];
+
+}
