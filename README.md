@@ -68,5 +68,4 @@ cd backend && uvicorn app.main:app --reload
 cd frontend
 npm install
 npm run dev
-
->>>>>>> 43f426b (Initial commit with project setup and README)
+```
