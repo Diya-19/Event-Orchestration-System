@@ -1,173 +1,576 @@
-import { useState, FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import {
+  Users,
+  Shield,
+  Settings,
+  Zap,
+  Trophy,
+  Mail
+} from "lucide-react";
 
 type Mode = "login" | "signup";
 
-interface AuthResponse {
-  access_token: string;
-  token_type: string;
-}
-
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
-
-async function apiLogin(email: string, password: string): Promise<AuthResponse> {
-  const res = await fetch(`${API_BASE}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? "Login failed");
-  }
-  return res.json();
-}
-
-async function apiSignup(name: string, email: string, password: string): Promise<AuthResponse> {
-  const res = await fetch(`${API_BASE}/api/auth/signup`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? "Signup failed");
-  }
-  return res.json();
-}
-
 export default function LoginPage() {
-  const navigate = useNavigate();
-  const [mode, setMode] = useState<Mode>("login");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      let data: AuthResponse;
-      if (mode === "login") {
-        data = await apiLogin(email, password);
-      } else {
-        if (!name.trim()) {
-          setError("Name is required");
-          return;
-        }
-        data = await apiSignup(name.trim(), email, password);
-      }
-      localStorage.setItem("committee_token", data.access_token);
-      navigate("/dashboard");
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [mode, setMode] = useState<Mode>("login");
+  const [role, setRole] = useState("Participant");
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-8">
 
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Event Orchestration</h1>
-          <p className="text-sm text-gray-500 mt-1">Committee Portal</p>
-        </div>
+    <div className="min-h-screen bg-[#F7F7FB] flex overflow-hidden">
 
-        {/* Mode Toggle */}
-        <div className="flex rounded-lg border border-gray-200 mb-6 overflow-hidden">
-          {(["login", "signup"] as Mode[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => { setMode(m); setError(""); }}
-              className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                mode === m
-                  ? "bg-indigo-600 text-white"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {m === "login" ? "Log in" : "Sign up"}
-            </button>
-          ))}
-        </div>
+      {/* LEFT */}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === "signup" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Full name
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Jane Smith"
-                required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
-              />
-            </div>
-          )}
+      <div className="
+      hidden
+      lg:flex
+      w-1/2
+      flex-col
+      justify-center
+      px-14
+      relative
+      ">
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              autoComplete="email"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
-            />
+        {/* LOGO */}
+
+        <div className="
+        absolute
+        top-10
+        left-10
+        flex
+        items-center
+        gap-3
+        ">
+
+          <div className="
+          w-12
+          h-12
+          rounded-xl
+          bg-gradient-to-r
+          from-purple-500
+          to-indigo-600
+          flex
+          items-center
+          justify-center
+          text-white
+          font-bold
+          ">
+
+            H
+
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              minLength={8}
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
-            />
-          </div>
+          <h2 className="
+          text-3xl
+          font-bold
+          ">
 
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {error}
-            </p>
-          )}
+            HackFlow
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
-          >
-            {loading
-              ? mode === "login" ? "Logging in…" : "Creating account…"
-              : mode === "login" ? "Log in" : "Create account"}
-          </button>
-        </form>
+          </h2>
 
-        {/* Footer note */}
-        <p className="mt-6 text-center text-xs text-gray-400">
-          Participant &amp; evaluator access is via emailed link — no account needed.
+        </div>
+
+        <h1 className="
+        text-[90px]
+        leading-[100px]
+        font-bold
+        text-slate-900
+        ">
+
+          Build. Innovate.
+
+          <br />
+
+          Solve.
+
+          <span className="text-purple-600">
+
+            Impact.
+
+          </span>
+
+        </h1>
+
+        <p className="
+        mt-8
+        text-gray-500
+        text-lg
+        max-w-xl
+        leading-8
+        ">
+
+          Welcome to HackFlow —
+          the intelligent platform built
+          to streamline hackathons
+          from team formation to evaluation.
+
         </p>
+
+        {/* FEATURES */}
+
+        <div className="
+        flex
+        gap-14
+        mt-24
+        ">
+
+          <Feature
+            icon={<Users size={28} />}
+            title="Collaborate"
+            subtitle="Work together"
+          />
+
+          <Feature
+            icon={<Zap size={28} />}
+            title="Innovate"
+            subtitle="Build solutions"
+          />
+
+          <Feature
+            icon={<Trophy size={28} />}
+            title="Win"
+            subtitle="Compete strong"
+          />
+
+        </div>
+
       </div>
+
+      {/* RIGHT */}
+
+      <div className="
+      w-full
+      lg:w-1/2
+      flex
+      justify-center
+      items-center
+      p-8
+      ">
+
+        <div className="
+        bg-white
+        rounded-[34px]
+        shadow-xl
+        p-10
+        w-full
+        max-w-xl
+        ">
+
+          <h1 className="
+          text-5xl
+          font-bold
+          text-center
+          ">
+
+            Welcome to
+
+            <span className="
+            text-purple-600
+            ">
+
+              HackFlow
+
+            </span>
+
+          </h1>
+
+          <p className="
+          text-center
+          text-gray-500
+          mt-3
+          ">
+
+            Choose your role
+
+          </p>
+
+          {/* ROLE */}
+
+          <div className="
+          grid
+          grid-cols-3
+          gap-4
+          mt-8
+          ">
+
+            <RoleCard
+              title="Participant"
+              icon={<Users />}
+              active={role === "Participant"}
+              onClick={() => setRole("Participant")}
+            />
+
+            <RoleCard
+              title="Judge"
+              icon={<Shield />}
+              active={role === "Judge"}
+              onClick={() => setRole("Judge")}
+            />
+
+            <RoleCard
+              title="Admin"
+              icon={<Settings />}
+              active={role === "Admin"}
+              onClick={() => setRole("Admin")}
+            />
+
+          </div>
+
+          {/* LOGIN SIGNUP */}
+
+          <div className="
+          flex
+          border
+          rounded-xl
+          overflow-hidden
+          mt-8
+          ">
+
+            {(["login", "signup"] as Mode[]).map((item) => (
+
+              <button
+
+                key={item}
+
+                onClick={() =>
+
+                  setMode(item)
+
+                }
+
+                className={`
+                flex-1
+                py-4
+                font-semibold
+
+                ${
+
+                  mode === item
+
+                    ?
+
+                    "bg-purple-600 text-white"
+
+                    :
+
+                    "bg-white text-gray-600"
+
+                  }
+
+                `}
+              >
+
+                {
+
+                  item === "login"
+
+                    ?
+
+                    "Login"
+
+                    :
+
+                    "Signup"
+
+                }
+
+              </button>
+
+            ))}
+
+          </div>
+
+          {/* FORM */}
+
+          <div className="
+          space-y-4
+          mt-8
+          ">
+
+            {
+
+              mode === "signup"
+
+              &&
+
+              <input
+
+                placeholder="Name"
+
+                className="
+                w-full
+                border
+                rounded-xl
+                p-4
+                outline-none
+                "
+
+              />
+
+            }
+
+            <input
+
+              placeholder="Email"
+
+              className="
+              w-full
+              border
+              rounded-xl
+              p-4
+              outline-none
+              "
+
+            />
+
+            <input
+
+              type="password"
+
+              placeholder="Password"
+
+              className="
+              w-full
+              border
+              rounded-xl
+              p-4
+              outline-none
+              "
+
+            />
+
+            <button className="
+            w-full
+            bg-purple-600
+            hover:bg-purple-700
+            text-white
+            rounded-xl
+            p-4
+            font-semibold
+            ">
+
+              {
+
+                mode === "login"
+
+                  ?
+
+                  "Log In"
+
+                  :
+
+                  "Create Account"
+
+              }
+
+            </button>
+
+          </div>
+
+          {/* SOCIAL */}
+
+          <div className="
+          text-center
+          text-gray-400
+          my-5
+          ">
+
+            continue with
+
+          </div>
+
+          <div className="
+          space-y-3
+          ">
+
+            <SocialButton
+            icon={
+            <span className="
+            text-red-500
+            font-bold
+            text-lg
+            ">
+
+G
+
+</span>
+}
+text="Google"
+/>
+
+           <SocialButton
+           icon={
+           <div className="
+           grid
+           grid-cols-2
+           gap-[2px]
+           ">
+            <div className="w-2 h-2 bg-red-500"/>
+            <div className="w-2 h-2 bg-green-500"/>
+            <div className="w-2 h-2 bg-blue-500"/>
+            <div className="w-2 h-2 bg-yellow-400"/>
+            </div>
+            }
+            text="Microsoft"/>
+
+            <SocialButton
+              icon={<Mail size={18} />}
+              text="Email"
+            />
+
+          </div>
+
+        </div>
+
+      </div>
+
     </div>
+
   );
+
+}
+
+function Feature({
+  icon,
+  title,
+  subtitle
+}:{
+  icon:React.ReactNode
+  title:string
+  subtitle:string
+}){
+
+return(
+
+<div className="
+flex
+flex-col
+items-center
+w-28
+text-center
+">
+
+<div className="
+w-16
+h-16
+bg-purple-100
+rounded-2xl
+flex
+items-center
+justify-center
+text-purple-600
+">
+
+{icon}
+
+</div>
+
+<h3 className="
+font-bold
+mt-4
+">
+
+{title}
+
+</h3>
+
+<p className="
+text-gray-500
+text-sm
+">
+
+{subtitle}
+
+</p>
+
+</div>
+
+)
+
+}
+
+function RoleCard({
+title,
+icon,
+active,
+onClick
+}:any){
+
+return(
+
+<button
+
+onClick={onClick}
+
+className={`
+border
+rounded-2xl
+p-6
+flex
+flex-col
+items-center
+gap-3
+
+${
+active
+
+?
+
+"border-purple-500 bg-purple-50"
+
+:
+
+"border-gray-200"
+
+}
+
+`}
+
+>
+
+{icon}
+
+<p>
+
+{title}
+
+</p>
+
+</button>
+
+)
+
+}
+
+function SocialButton({
+icon,
+text
+}:any){
+
+return(
+
+<button className="
+w-full
+border
+rounded-xl
+p-4
+flex
+justify-center
+items-center
+gap-3
+">
+
+{icon}
+
+<span>
+
+Continue with {text}
+
+</span>
+
+</button>
+
+)
+
 }
