@@ -1,7 +1,4 @@
-<<<<<<< HEAD
 # Event-Orchestration-System
-=======
-# Project Setup Guide
 
 This README provides clear instructions on how to set up, migrate, and run both the backend and frontend components of this application.
 
