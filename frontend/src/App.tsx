@@ -65,7 +65,6 @@ export default function App() {
             path="participants"
             element={<ParticipantsPage />}
           />
-
           {/* TEAM FORMATION */}
 
           <Route
@@ -79,7 +78,6 @@ export default function App() {
             path="rules"
             element={<RulesPage />}
           />
-
         </Route>
 
         {/* DEFAULT REDIRECT */}

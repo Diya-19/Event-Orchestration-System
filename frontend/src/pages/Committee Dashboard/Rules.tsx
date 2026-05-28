@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { api } from "../../lib/api";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
-  CalendarDays, Users, Building2, Scale, Shield, Info, Search,
-  Filter, GripVertical, Pencil, Trash2, X, Save, Bold, Italic,
-  Underline, List, Link, Quote, ToggleLeft, ToggleRight, Check
+  CalendarDays, Users, Scale, Shield, Info, Search,
+  Pencil, Trash2, X, Save, Bold, Italic,
+  Underline, List, Link, Quote
 } from 'lucide-react';
 
 type Rule = {
@@ -26,7 +28,7 @@ const initialRules: Rule[] = [
   { id: '6', title: 'General Guidelines', category: 'Miscellaneous', description: 'Follow all event schedules, communicate with mentors, and submit feedback forms after the event.', updatedAt: 'May 18, 2025', icon: Info, iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
 ];
 
-export default function RulesPage() {
+export function GuidelinesPage() {
   const [rules, setRules] = useState(initialRules);
   const [selectedRule, setSelectedRule] = useState<Rule | null>(initialRules[0]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -240,6 +242,318 @@ export default function RulesPage() {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+interface DistributionRules {
+  id?: string;
+  team_size: number;
+  min_team_size: number;
+  max_per_institution: number;
+  required_skills: string[];
+  balance_by: string[];
+  exclusions: Record<string, any>;
+  custom_rules: Record<string, any>;
+}
+
+export function DistributionRulesForm() {
+  const [searchParams] = useSearchParams();
+  const eventId = searchParams.get("event_id");
+
+  const [rules, setRules] = useState<DistributionRules | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // Form states
+  const [teamSize, setTeamSize] = useState(3);
+  const [minTeamSize, setMinTeamSize] = useState(1);
+  const [maxPerInstitution, setMaxPerInstitution] = useState(1);
+  const [requiredSkills, setRequiredSkills] = useState("");
+  const [balanceBy, setBalanceBy] = useState("");
+  const [exclusions, setExclusions] = useState("{}");
+  const [customRules, setCustomRules] = useState("{}");
+
+  useEffect(() => {
+    if (!eventId) {
+      setError("No event selected.");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    api.get<DistributionRules>(`/api/events/${eventId}/distribution_rules`)
+      .then(({ data }) => {
+        setRules(data);
+        setTeamSize(data.team_size);
+        setMinTeamSize(data.min_team_size);
+        setMaxPerInstitution(data.max_per_institution);
+        setRequiredSkills(data.required_skills?.join(", ") || "");
+        setBalanceBy(data.balance_by?.join(", ") || "");
+        setExclusions(JSON.stringify(data.exclusions || {}, null, 2));
+        setCustomRules(JSON.stringify(data.custom_rules || {}, null, 2));
+      })
+      .catch((err) => {
+        if (err.response?.status !== 404) {
+          setError("Failed to load distribution rules.");
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [eventId]);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!eventId) return;
+
+    setSaving(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      let parsedExclusions = {};
+      let parsedCustomRules = {};
+      try {
+        parsedExclusions = JSON.parse(exclusions || "{}");
+        parsedCustomRules = JSON.parse(customRules || "{}");
+      } catch (parseError) {
+        throw new Error("Invalid JSON format in Exclusions or Custom Rules");
+      }
+
+      const payload = {
+        team_size: teamSize,
+        min_team_size: minTeamSize,
+        max_per_institution: maxPerInstitution,
+        required_skills: requiredSkills.split(",").map(s => s.trim()).filter(Boolean),
+        balance_by: balanceBy.split(",").map(s => s.trim()).filter(Boolean),
+        exclusions: parsedExclusions,
+        custom_rules: parsedCustomRules,
+      };
+
+      let response;
+      if (rules?.id) {
+        response = await api.put<DistributionRules>(`/api/events/${eventId}/distribution_rules`, payload);
+      } else {
+        response = await api.post<DistributionRules>(`/api/events/${eventId}/distribution_rules`, payload);
+      }
+
+      setRules(response.data);
+      setSuccess("Rules saved successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err: any) {
+      setError(err.message || "Failed to save rules.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!eventId || !rules?.id) return;
+    if (!confirm("Are you sure you want to delete these distribution rules?")) return;
+
+    setDeleting(true);
+    setError("");
+    try {
+      await api.delete(`/api/events/${eventId}/distribution_rules`);
+      setRules(null);
+      setSuccess("Rules deleted successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+      
+      // Reset form to defaults
+      setTeamSize(3);
+      setMinTeamSize(1);
+      setMaxPerInstitution(1);
+      setRequiredSkills("");
+      setBalanceBy("");
+      setExclusions("{}");
+      setCustomRules("{}");
+    } catch (err) {
+      setError("Failed to delete rules.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  if (loading) return <div className="p-6 text-gray-500 animate-pulse">Loading rules...</div>;
+
+  if (!eventId) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[400px]">
+        <h2 className="text-xl font-bold text-gray-800">No Event Selected</h2>
+        <p className="text-gray-500 mt-2">Please select an event from the Dashboard to view its rules.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-8 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Distribution Rules</h1>
+          <p className="text-sm text-gray-500 mt-2">
+            Configure how teams are formed and validated for this event.
+          </p>
+        </div>
+        {rules?.id && (
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
+          >
+            {deleting ? "Deleting..." : "Delete Rules"}
+          </button>
+        )}
+      </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded shadow-sm">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="mb-6 p-4 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-700 rounded shadow-sm">
+          {success}
+        </div>
+      )}
+
+      <form onSubmit={handleSave} className="space-y-8">
+        {/* Basic Settings */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+            <h2 className="text-lg font-semibold text-gray-800">Team Size & Limits</h2>
+          </div>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Min Team Size</label>
+              <input
+                type="number"
+                min="1"
+                value={minTeamSize}
+                onChange={(e) => setMinTeamSize(Number(e.target.value))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Max Team Size</label>
+              <input
+                type="number"
+                min={minTeamSize}
+                value={teamSize}
+                onChange={(e) => setTeamSize(Number(e.target.value))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Max Per Institution</label>
+              <input
+                type="number"
+                min="1"
+                value={maxPerInstitution}
+                onChange={(e) => setMaxPerInstitution(Number(e.target.value))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Skill & Balance Rules */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+            <h2 className="text-lg font-semibold text-gray-800">Requirements & Balancing</h2>
+          </div>
+          <div className="p-6 space-y-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Required Skills (comma-separated)</label>
+              <input
+                type="text"
+                value={requiredSkills}
+                onChange={(e) => setRequiredSkills(e.target.value)}
+                placeholder="e.g. React, Python, UI/UX"
+                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Balance By (comma-separated)</label>
+              <input
+                type="text"
+                value={balanceBy}
+                onChange={(e) => setBalanceBy(e.target.value)}
+                placeholder="e.g. Year of Study, Department"
+                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Advanced JSON Rules */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+            <h2 className="text-lg font-semibold text-gray-800">Advanced Configurations (JSON)</h2>
+          </div>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Exclusions</label>
+              <textarea
+                value={exclusions}
+                onChange={(e) => setExclusions(e.target.value)}
+                rows={6}
+                className="w-full font-mono text-sm px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm bg-gray-50"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Custom Rules</label>
+              <textarea
+                value={customRules}
+                onChange={(e) => setCustomRules(e.target.value)}
+                rows={6}
+                className="w-full font-mono text-sm px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm bg-gray-50"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Submit */}
+        <div className="flex justify-end pt-4">
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all focus:ring-4 focus:ring-indigo-100"
+          >
+            {saving ? "Saving Changes..." : rules?.id ? "Update Rules" : "Create Rules"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export default function RulesPage() {
+  const [activeTab, setActiveTab] = useState<'guidelines' | 'distribution'>('guidelines');
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="bg-white border-b border-gray-200 px-6 py-4 flex gap-4 shadow-sm">
+        <button
+          onClick={() => setActiveTab('guidelines')}
+          className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'guidelines' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'}`}
+        >
+          General Guidelines
+        </button>
+        <button
+          onClick={() => setActiveTab('distribution')}
+          className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'distribution' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'}`}
+        >
+          Distribution Rules Configuration
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-auto">
+        {activeTab === 'guidelines' ? <GuidelinesPage /> : <DistributionRulesForm />}
       </div>
     </div>
   );

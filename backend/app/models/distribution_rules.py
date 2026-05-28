@@ -12,8 +12,10 @@ class DistributionRules(Base):
     event_id            = Column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"),
                                  nullable=False)
     team_size           = Column(Integer, nullable=False, default=3)
+    min_team_size       = Column(Integer, nullable=False, default=1)
     max_per_institution = Column(Integer, default=1)
     required_skills     = Column(ARRAY(Text))
     balance_by          = Column(ARRAY(Text))
     exclusions          = Column(JSONB)
+    custom_rules        = Column(JSONB, default=dict)
     created_at          = Column(TIMESTAMP(timezone=True), default=datetime.datetime.utcnow)
