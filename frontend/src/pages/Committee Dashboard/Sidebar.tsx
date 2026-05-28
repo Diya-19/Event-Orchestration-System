@@ -1,3 +1,42 @@
+
+// import { useEffect, useState } from "react";
+// import { NavLink, Outlet, useNavigate, useSearchParams } from "react-router-dom";
+// import { clearToken } from "../../lib/auth";
+// // ⚠️ Uncomment when backend is ready:
+// // import { api } from "../../lib/api";
+// // import { Event } from "../../types";
+
+// type Event = { id: string; name: string }; // Fallback type for now
+
+// const NAV = [
+//   { to: "/dashboard",                       label: "Overview",               end: true  },
+//   { to: "/dashboard/participants",          label: "Participants",           end: false },
+//   { to: "/dashboard/rules",                 label: "Rules",                  end: false },
+//   { to: "/dashboard/participant-dashboard", label: "Participant Dashboard",  end: false },
+// ];
+
+// export default function DashboardLayout() {
+//   const navigate = useNavigate();
+//   const [searchParams] = useSearchParams();
+//   const eventId = searchParams.get("event_id") ?? "";
+//   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+
+//   useEffect(() => {
+//     if (!eventId) { setSelectedEvent(null); return; }
+    
+//     // ⚠️ TEMPORARY: Mock until backend API is live
+//     setSelectedEvent({ id: eventId, name: "HackFlow 2026" });
+    
+//     /* Uncomment when backend is ready:
+//     api.get<Event>(`/api/events/${eventId}`)
+//       .then(({ data }) => setSelectedEvent(data))
+//       .catch(() => setSelectedEvent(null));
+//     */
+//   }, [eventId]);
+
+//   function navTo(base: string) {
+//     return eventId ? `${base}?event_id=${eventId}` : base;
+//   }
 // import { useEffect, useState } from "react";
 // import { NavLink, Outlet, useNavigate, useSearchParams } from "react-router-dom";
 // import { clearToken } from "../../lib/auth";
