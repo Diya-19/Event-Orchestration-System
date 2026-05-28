@@ -7,6 +7,7 @@ import DashboardLayout from "./pages/Committee Dashboard/Sidebar";
 import OverviewPage from "./pages/Committee Dashboard/Dashboard";
 import ParticipantsPage from "./pages/Committee Dashboard/ParticipantsPage";
 import TeamFormation from "./pages/Committee Dashboard/TeamFormation";
+import RulesPage from "./pages/Committee Dashboard/Rules";
 
 // TEMP AUTH BYPASS
 
@@ -25,7 +26,9 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 */
 
 export default function App() {
+
   return (
+
     <BrowserRouter>
 
       <Routes>
@@ -69,6 +72,13 @@ export default function App() {
             element={<TeamFormation />}
           />
 
+          {/* RULES */}
+
+          <Route
+            path="rules"
+            element={<RulesPage />}
+          />
+
         </Route>
 
         {/* DEFAULT REDIRECT */}
@@ -86,5 +96,7 @@ export default function App() {
       </Routes>
 
     </BrowserRouter>
+
   );
+
 }
