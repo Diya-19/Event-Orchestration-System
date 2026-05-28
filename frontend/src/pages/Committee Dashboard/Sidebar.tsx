@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate, useSearchParams } from "react-router-dom";
 import { clearToken } from "../../lib/auth";
-import { api } from "../../lib/api";
-import { Event } from "../../types";
+// ⚠️ Uncomment when backend is ready:
+// import { api } from "../../lib/api";
+// import { Event } from "../../types";
+
+type Event = { id: string; name: string }; // Fallback type for now
 
 const NAV = [
-  { to: "/dashboard",              label: "Overview",      end: true  },
-  { to: "/dashboard/participants", label: "Participants",  end: false },
+  { to: "/dashboard",                       label: "Overview",               end: true  },
+  { to: "/dashboard/participants",          label: "Participants",           end: false },
+  { to: "/dashboard/rules",                 label: "Rules",                  end: false },
+  { to: "/dashboard/participant-dashboard", label: "Participant Dashboard",  end: false },
 ];
 
 export default function DashboardLayout() {
@@ -17,12 +22,17 @@ export default function DashboardLayout() {
 
   useEffect(() => {
     if (!eventId) { setSelectedEvent(null); return; }
+    
+    // ⚠️ TEMPORARY: Mock until backend API is live
+    setSelectedEvent({ id: eventId, name: "HackFlow 2026" });
+    
+    /* Uncomment when backend is ready:
     api.get<Event>(`/api/events/${eventId}`)
       .then(({ data }) => setSelectedEvent(data))
       .catch(() => setSelectedEvent(null));
+    */
   }, [eventId]);
 
-  // Append ?event_id= to every nav link so the selection persists across pages
   function navTo(base: string) {
     return eventId ? `${base}?event_id=${eventId}` : base;
   }
@@ -40,7 +50,6 @@ export default function DashboardLayout() {
           <p className="text-xs text-gray-400 mt-0.5">Committee Portal</p>
         </div>
 
-        {/* Active event banner */}
         {selectedEvent ? (
           <div className="px-4 py-3 bg-indigo-50 border-b border-indigo-100">
             <p className="text-xs font-medium text-indigo-500 uppercase tracking-wide">Active Event</p>
