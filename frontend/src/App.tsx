@@ -1,23 +1,48 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { isLoggedIn } from "./lib/auth";
-import LoginPage from "./pages/LoginPage";
 
+import { isLoggedIn } from "./lib/auth";
+// import { isLoggedIn } from "./lib/auth";
+
+import LoginPage from "./pages/LoginPage";
 import DashboardLayout from "./pages/Committee Dashboard/Sidebar";
 import OverviewPage from "./pages/Committee Dashboard/Dashboard";
 import ParticipantsPage from "./pages/Committee Dashboard/ParticipantsPage";
-import RulesPage from "./pages/Committee Dashboard/Rules"; // 👈 ADDED
+import TeamFormation from "./pages/Committee Dashboard/TeamFormation";
+import RulesPage from "./pages/Committee Dashboard/Rules";
 
 import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
+
+// TEMP AUTH BYPASS
+
+function RequireAuth({ children }: { children: JSX.Element }) {
+  return children;
+}
+
+/*
+// ORIGINAL AUTH
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   return isLoggedIn() ? children : <Navigate to="/login" replace />;
 }
+*/
 
 export default function App() {
+
   return (
+
     <BrowserRouter>
+
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
+
+        {/* LOGIN */}
+
+        <Route
+          path="/login"
+          element={<LoginPage />}
+        />
+
+        {/* DASHBOARD */}
+
         <Route
           path="/dashboard"
           element={
@@ -26,16 +51,52 @@ export default function App() {
             </RequireAuth>
           }
         >
-          <Route index element={<OverviewPage />} />
-          <Route path="participants" element={<ParticipantsPage />} />
-          <Route path="rules" element={<RulesPage />} /> // 👈 ADDED
-          <Route path="participant-dashboard" element={<ParticipantDashboard />} />
+
+          {/* DEFAULT DASHBOARD */}
+
+          <Route
+            index
+            element={<OverviewPage />}
+          />
+
+          {/* PARTICIPANTS */}
+
+          <Route
+            path="participants"
+            element={<ParticipantsPage />}
+          />
+
+          {/* TEAM FORMATION */}
+
+          <Route
+            path="team-formation"
+            element={<TeamFormation />}
+          />
+
+          {/* RULES */}
+
+          <Route
+            path="rules"
+            element={<RulesPage />}
+          />
+
         </Route>
+
+        {/* DEFAULT REDIRECT */}
+
         <Route
           path="*"
-          element={<Navigate to="/login" replace />}
+          element={
+            <Navigate
+              to="/dashboard/team-formation"
+              replace
+            />
+          }
         />
       </Routes>
+
     </BrowserRouter>
+
   );
+
 }
