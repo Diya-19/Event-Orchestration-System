@@ -5,6 +5,7 @@ import LoginPage from "./pages/LoginPage";
 import DashboardLayout from "./pages/Committee Dashboard/Sidebar";
 import OverviewPage from "./pages/Committee Dashboard/Dashboard";
 import ParticipantsPage from "./pages/Committee Dashboard/ParticipantsPage";
+import RulesPage from "./pages/Committee Dashboard/Rules"; // 👈 ADDED
 
 import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 
@@ -27,6 +28,7 @@ export default function App() {
         >
           <Route index element={<OverviewPage />} />
           <Route path="participants" element={<ParticipantsPage />} />
+          <Route path="rules" element={<RulesPage />} /> // 👈 ADDED
           <Route path="participant-dashboard" element={<ParticipantDashboard />} />
         </Route>
         <Route
