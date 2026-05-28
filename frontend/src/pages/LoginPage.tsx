@@ -370,7 +370,7 @@ export default function LoginPage() {
 
           {/* SOCIAL */}
 
-          <div className="
+          {/* <div className="
           text-center
           text-gray-400
           my-5
@@ -378,9 +378,9 @@ export default function LoginPage() {
 
             continue with
 
-          </div>
+          </div> */}
 
-          <div className="
+          {/* <div className="
           space-y-3
           ">
 
@@ -419,7 +419,7 @@ text="Google"
               text="Email"
             />
 
-          </div>
+          </div> */}
 
         </div>
 
