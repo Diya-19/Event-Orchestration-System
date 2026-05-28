@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-import { isLoggedIn } from "./lib/auth";
+// import { isLoggedIn } from "./lib/auth";
 // import { isLoggedIn } from "./lib/auth";
 
 import LoginPage from "./pages/LoginPage";
@@ -10,7 +10,7 @@ import ParticipantsPage from "./pages/Committee Dashboard/ParticipantsPage";
 import TeamFormation from "./pages/Committee Dashboard/TeamFormation";
 import RulesPage from "./pages/Committee Dashboard/Rules";
 
-import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
+// import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 
 // TEMP AUTH BYPASS
 
