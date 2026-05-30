@@ -22,6 +22,8 @@ from app.models.communication import Communication, CommunicationLog
 
 from app.models.activity_log import ActivityLog
 
+from app.models.event_rule import EventRule
+
 __all__ = [
 
     "CommitteeUser",
@@ -49,5 +51,7 @@ __all__ = [
     "CommunicationLog",
 
     "ActivityLog",
+
+    "EventRule",
 
 ]

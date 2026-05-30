@@ -12,31 +12,86 @@ type Rule = {
   title: string;
   category: string;
   description: string;
-  updatedAt: string;
-  icon: React.ElementType;
-  iconBg: string;
-  iconColor: string;
+  updated_at: string;
 };
 
-// Mock Data
-const initialRules: Rule[] = [
-  { id: '1', title: 'Submission Deadline', category: 'Submission', description: 'All teams must submit their projects before the official deadline.\n• The final submission must include all required deliverables.\n• No further changes will be accepted after submission.', updatedAt: 'May 18, 2025', icon: CalendarDays, iconBg: 'bg-purple-100', iconColor: 'text-purple-600' },
-  { id: '2', title: 'Team Eligibility', category: 'Eligibility', description: 'Teams must be formed according to the eligibility criteria set by the organizers.', updatedAt: 'May 18, 2025', icon: Users, iconBg: 'bg-green-100', iconColor: 'text-green-600' },
-  { id: '3', title: 'Team Size', category: 'Team Rules', description: 'Teams must maintain a size between 3 and 5 members throughout the event.', updatedAt: 'May 18, 2025', icon: Users, iconBg: 'bg-orange-100', iconColor: 'text-orange-600' },
-  { id: '4', title: 'Judging Criteria', category: 'Judging', description: 'Projects will be evaluated based on innovation, technical complexity, UI/UX, and presentation.', updatedAt: 'May 18, 2025', icon: Scale, iconBg: 'bg-purple-100', iconColor: 'text-purple-600' },
-  { id: '5', title: 'Code of Conduct', category: 'Conduct', description: 'All participants must adhere to the code of conduct. Violations may result in disqualification.', updatedAt: 'May 18, 2025', icon: Shield, iconBg: 'bg-red-100', iconColor: 'text-red-600' },
-  { id: '6', title: 'General Guidelines', category: 'Miscellaneous', description: 'Follow all event schedules, communicate with mentors, and submit feedback forms after the event.', updatedAt: 'May 18, 2025', icon: Info, iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
-];
+export interface DistributionRules {
+  id?: string;
+  team_size: number;
+  min_team_size: number;
+  max_per_institution: number;
+  required_skills: string[];
+  balance_by: string[];
+  exclusions: Record<string, any>;
+  custom_rules: Record<string, any>;
+}
+
+const CATEGORY_ICONS: Record<string, { icon: React.ElementType, bg: string, color: string }> = {
+  'Submission': { icon: CalendarDays, bg: 'bg-purple-100', color: 'text-purple-600' },
+  'Eligibility': { icon: Users, bg: 'bg-green-100', color: 'text-green-600' },
+  'Team Rules': { icon: Users, bg: 'bg-orange-100', color: 'text-orange-600' },
+  'Judging': { icon: Scale, bg: 'bg-purple-100', color: 'text-purple-600' },
+  'Conduct': { icon: Shield, bg: 'bg-red-100', color: 'text-red-600' },
+  'Miscellaneous': { icon: Info, bg: 'bg-blue-100', color: 'text-blue-600' },
+};
 
 export function GuidelinesPage() {
-  const [rules, setRules] = useState(initialRules);
-  const [selectedRule, setSelectedRule] = useState<Rule | null>(initialRules[0]);
+  const [searchParams] = useSearchParams();
+  const eventId = searchParams.get("event_id");
+
+  const [rules, setRules] = useState<Rule[]>([]);
+  const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All Categories');
   const [flexibleTeamSize, setFlexibleTeamSize] = useState(true);
-  
+
+  const [teamSize, setTeamSize] = useState(3);
+  const [minTeamSize, setMinTeamSize] = useState(1);
+  const [maxPerInstitution, setMaxPerInstitution] = useState(1);
+  const [distRuleId, setDistRuleId] = useState<string | null>(null);
+
   // Edit state
-  const [editForm, setEditForm] = useState(selectedRule || initialRules[0]);
+  const [editForm, setEditForm] = useState<Partial<Rule>>({});
+
+  useEffect(() => {
+    if (!eventId) return;
+    
+    // Load distribution rules (team size)
+    api.get<DistributionRules>(`/api/events/${eventId}/distribution_rules`)
+      .then(({ data }) => {
+        setDistRuleId(data.id || null);
+        setTeamSize(data.team_size);
+        setMinTeamSize(data.min_team_size);
+        setMaxPerInstitution(data.max_per_institution);
+      })
+      .catch(() => {}); // ignore if it doesn't exist yet
+
+    // Load textual rules
+    api.get<Rule[]>(`/api/events/${eventId}/rules`)
+      .then(({ data }) => setRules(data))
+      .catch(e => console.error("Failed to load rules", e));
+  }, [eventId]);
+
+  const updateTeamSetting = async (field: string, newValue: number) => {
+    if (!eventId) return;
+    
+    // Optimistic update
+    let payload = { team_size: teamSize, min_team_size: minTeamSize, max_per_institution: maxPerInstitution };
+    if (field === 'min') { setMinTeamSize(newValue); payload.min_team_size = newValue; }
+    if (field === 'max') { setTeamSize(newValue); payload.team_size = newValue; }
+    if (field === 'inst') { setMaxPerInstitution(newValue); payload.max_per_institution = newValue; }
+
+    try {
+      if (distRuleId) {
+        await api.put(`/api/events/${eventId}/distribution_rules`, payload);
+      } else {
+        const res = await api.post(`/api/events/${eventId}/distribution_rules`, payload);
+        setDistRuleId(res.data.id || null);
+      }
+    } catch (e) {
+      console.error("Failed to save team size setting", e);
+    }
+  };
 
   // Filter logic
   const filteredRules = rules.filter(rule => {
@@ -51,11 +106,71 @@ export function GuidelinesPage() {
     setEditForm(rule);
   };
 
-  const handleSave = () => {
-    if (!selectedRule) return;
-    setRules(prev => prev.map(r => r.id === selectedRule.id ? { ...r, ...editForm } : r));
-    setSelectedRule({ ...selectedRule, ...editForm });
+  const handleAddRule = () => {
+    const newRule: Rule = {
+      id: 'new',
+      title: 'New Rule',
+      category: 'Miscellaneous',
+      description: '',
+      updated_at: new Date().toISOString()
+    };
+    setSelectedRule(newRule);
+    setEditForm(newRule);
   };
+
+  const handleSave = async () => {
+    if (!eventId || !selectedRule || !editForm.title || !editForm.category) return;
+
+    try {
+      if (selectedRule.id === 'new') {
+        const res = await api.post<Rule>(`/api/events/${eventId}/rules`, {
+          title: editForm.title,
+          category: editForm.category,
+          description: editForm.description || ""
+        });
+        setRules([...rules, res.data]);
+        setSelectedRule(res.data);
+      } else {
+        const res = await api.put<Rule>(`/api/events/rules/${selectedRule.id}`, {
+          title: editForm.title,
+          category: editForm.category,
+          description: editForm.description || ""
+        });
+        setRules(rules.map(r => r.id === selectedRule.id ? res.data : r));
+        setSelectedRule(res.data);
+      }
+    } catch (e) {
+      console.error("Failed to save rule", e);
+      alert("Failed to save rule.");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (id === 'new') {
+      setSelectedRule(null);
+      return;
+    }
+    
+    if (!confirm("Are you sure you want to delete this rule?")) return;
+    
+    try {
+      await api.delete(`/api/events/rules/${id}`);
+      setRules(rules.filter(r => r.id !== id));
+      if (selectedRule?.id === id) setSelectedRule(null);
+    } catch (e) {
+      console.error("Failed to delete rule", e);
+      alert("Failed to delete rule.");
+    }
+  };
+
+  if (!eventId) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[400px] bg-gray-50">
+        <h2 className="text-xl font-bold text-gray-800">No Event Selected</h2>
+        <p className="text-gray-500 mt-2">Please select an event from the Dashboard to view and manage its rules.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen font-sans">
@@ -65,7 +180,7 @@ export function GuidelinesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Rules & Guidelines</h1>
           <p className="text-sm text-gray-500 mt-1">Create, manage and organize the rules for your hackathon.</p>
         </div>
-        <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
+        <button onClick={handleAddRule} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
           <span>+ Add Rule</span>
         </button>
       </div>
@@ -81,16 +196,24 @@ export function GuidelinesPage() {
 
         <div className="flex flex-wrap items-center gap-6">
           {[
-            { label: 'Minimum Members', value: 3, id: 'min' },
-            { label: 'Maximum Members', value: 5, id: 'max' },
-            { label: 'Max per Institution', value: 2, id: 'inst' }
+            { label: 'Minimum Members', value: minTeamSize, id: 'min' },
+            { label: 'Maximum Members', value: teamSize, id: 'max' },
+            { label: 'Max per Institution', value: maxPerInstitution, id: 'inst' }
           ].map(({ label, value, id }) => (
             <div key={id} className="flex flex-col items-center gap-1">
               <span className="text-xs text-gray-500">{label}</span>
               <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-2 py-1 border border-gray-200">
-                <button className="text-gray-400 hover:text-gray-600">-</button>
+                <button 
+                  onClick={() => updateTeamSetting(id, Math.max(1, value - 1))}
+                  disabled={!eventId}
+                  className="text-gray-400 hover:text-gray-600 px-1 disabled:opacity-50"
+                >-</button>
                 <span className="font-medium w-4 text-center">{value}</span>
-                <button className="text-gray-400 hover:text-gray-600">+</button>
+                <button 
+                  onClick={() => updateTeamSetting(id, value + 1)}
+                  disabled={!eventId}
+                  className="text-gray-400 hover:text-gray-600 px-1 disabled:opacity-50"
+                >+</button>
               </div>
             </div>
           ))}
@@ -146,7 +269,15 @@ export function GuidelinesPage() {
           </div>
 
           <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-            {filteredRules.map(rule => (
+            {filteredRules.length === 0 && (
+              <div className="text-center py-10 text-gray-400">
+                <p>No rules found.</p>
+              </div>
+            )}
+            {filteredRules.map(rule => {
+              const iconData = CATEGORY_ICONS[rule.category] || CATEGORY_ICONS['Miscellaneous'];
+              const Icon = iconData.icon;
+              return (
               <div
                 key={rule.id}
                 onClick={() => handleSelectRule(rule)}
@@ -156,26 +287,32 @@ export function GuidelinesPage() {
                     : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
                 }`}
               >
-                <div className={`w-10 h-10 rounded-xl ${rule.iconBg} flex items-center justify-center flex-shrink-0`}>
-                  <rule.icon size={20} className={rule.iconColor} />
+                <div className={`w-10 h-10 rounded-xl ${iconData.bg} flex items-center justify-center flex-shrink-0`}>
+                  <Icon size={20} className={iconData.color} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-gray-800 text-sm">{rule.title}</h3>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{rule.category}</span>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">Updated on {rule.updatedAt}</p>
+                  <p className="text-xs text-gray-400 mt-1">Updated on {new Date(rule.updated_at).toLocaleDateString()}</p>
                 </div>
                 <div className="flex items-center gap-1">
                   <button className="p-2 hover:bg-gray-100 rounded-lg"><Pencil size={16} className="text-gray-400" /></button>
-                  <button className="p-2 hover:bg-gray-100 rounded-lg"><Trash2 size={16} className="text-red-400" /></button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleDelete(rule.id); }} 
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    <Trash2 size={16} className="text-red-400" />
+                  </button>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </div>
 
         {/* Edit Rule Panel */}
+        {selectedRule && (
         <div className="lg:col-span-1 bg-white rounded-2xl p-5 shadow-sm border border-gray-100 h-fit">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-gray-800">Edit Rule</h2>
@@ -233,31 +370,24 @@ export function GuidelinesPage() {
               >
                 <Save size={16} /> Save Rule
               </button>
-              <button className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 py-2 rounded-lg font-medium text-sm transition-colors">
+              <button onClick={() => setSelectedRule(null)} className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 py-2 rounded-lg font-medium text-sm transition-colors">
                 Cancel
               </button>
-              <button className="px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
-                <Trash2 size={14} /> Delete
-              </button>
+              {selectedRule.id !== 'new' && (
+                <button onClick={() => handleDelete(selectedRule.id)} className="px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
+                  <Trash2 size={14} /> Delete
+                </button>
+              )}
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   );
 }
 
 
-interface DistributionRules {
-  id?: string;
-  team_size: number;
-  min_team_size: number;
-  max_per_institution: number;
-  required_skills: string[];
-  balance_by: string[];
-  exclusions: Record<string, any>;
-  custom_rules: Record<string, any>;
-}
 
 export function DistributionRulesForm() {
   const [searchParams] = useSearchParams();

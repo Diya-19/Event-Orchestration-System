@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
-from passlib.context import CryptContext
+import bcrypt
 
 from app.db import get_db
 from app.models.committee_user import CommitteeUser
@@ -10,14 +10,16 @@ from app.services.token_service import create_access_token, verify_token
 
 from app.auth import require_committee
 
-# Re-export under the legacy name so Stage 1 routers that still reference
-# get_current_committee_user continue to work without modification.
 get_current_committee_user = require_committee
 
 router = APIRouter()
-
-_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _bearer = HTTPBearer()
+
+def get_password_hash(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 
 # ---------- Pydantic schemas ----------
@@ -54,7 +56,7 @@ def signup(body: SignupRequest, db: Session = Depends(get_db)):
     user = CommitteeUser(
         name=body.name,
         email=body.email,
-        hashed_password=_pwd.hash(body.password),
+        hashed_password=get_password_hash(body.password),
     )
     db.add(user)
     db.commit()
@@ -66,7 +68,7 @@ def signup(body: SignupRequest, db: Session = Depends(get_db)):
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(CommitteeUser).filter(CommitteeUser.email == body.email).first()
-    if not user or not _pwd.verify(body.password, user.hashed_password):
+    if not user or not verify_password(body.password, user.hashed_password):
         # same message for both cases — avoids email enumeration
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

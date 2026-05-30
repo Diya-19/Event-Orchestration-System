@@ -10,6 +10,7 @@ from app.routers.committee import (
     participants,
     dashboard,
     distribution_rules,
+    event_rules,
 )
 
 # Portal Routers
@@ -37,6 +38,7 @@ app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"]
 app.include_router(events.router, prefix="/api/events", tags=["Events"])
 app.include_router(participants.router, prefix="/api/events", tags=["Participants"])
 app.include_router(distribution_rules.router, prefix="/api/events", tags=["Distribution Rules"])
+app.include_router(event_rules.router, prefix="/api/events", tags=["Event Rules"])
 
 # Public/Portal API
 # app.include_router(portal_participant.router, prefix="/api/portal/participant", tags=["Portal - Participant"])

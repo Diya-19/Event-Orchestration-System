@@ -12,19 +12,11 @@ import RulesPage from "./pages/Committee Dashboard/Rules";
 
 // import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 
-// TEMP AUTH BYPASS
-
-function RequireAuth({ children }: { children: JSX.Element }) {
-  return children;
-}
-
-/*
-// ORIGINAL AUTH
+import { isLoggedIn } from "./lib/auth";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   return isLoggedIn() ? children : <Navigate to="/login" replace />;
 }
-*/
 
 export default function App() {
 
