@@ -35,6 +35,9 @@ export default function TeamFormation() {
   const [generationMethod, setGenerationMethod] = useState<"random" | "ai">("random");
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // NEW: Selection State
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
 
   // --- Data Fetching ---
   const fetchTeamsAndSummary = async () => {
@@ -55,10 +58,17 @@ export default function TeamFormation() {
     fetchTeamsAndSummary();
   }, [eventId]);
 
+  // --- Filtering ---
+  const filteredTeams = teams.filter(team => 
+    team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    team.members.some(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
   // --- Handlers ---
   const handleGenerate = async () => {
     if (!eventId) return;
     setIsLoading(true);
+    setSelectedTeamIds([]); // Clear selection on new generation
     try {
       await api.post(`/api/events/${eventId}/teams/generate?method=${generationMethod}`);
       await fetchTeamsAndSummary();
@@ -75,6 +85,7 @@ export default function TeamFormation() {
       return;
     }
     setIsLoading(true);
+    setSelectedTeamIds([]); // Clear selection
     try {
       await api.delete(`/api/events/${eventId}/teams/`);
       await api.post(`/api/events/${eventId}/teams/generate?method=${generationMethod}`);
@@ -87,10 +98,11 @@ export default function TeamFormation() {
   };
 
   const handleApprove = async () => {
-    if (!eventId) return;
+    if (!eventId || selectedTeamIds.length === 0) return;
     try {
-      await api.post(`/api/events/${eventId}/teams/approve`);
+      await api.post(`/api/events/${eventId}/teams/approve`, { team_ids: selectedTeamIds });
       await fetchTeamsAndSummary(); 
+      setSelectedTeamIds([]); // Clear selection after successful approval
     } catch (err) {
       alert("Failed to approve teams.");
     }
@@ -102,18 +114,33 @@ export default function TeamFormation() {
     try {
       await api.delete(`/api/events/${eventId}/teams/`);
       await fetchTeamsAndSummary();
+      setSelectedTeamIds([]); // Clear selection
     } catch (err) {
       alert("Failed to clear teams.");
     }
   };
 
-  // --- Filtering ---
-  const filteredTeams = teams.filter(team => 
-    team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    team.members.some(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // --- Selection Handlers ---
+  const handleSelectAll = () => {
+    // Only select draft teams, as approved teams don't need re-approving
+    const draftTeams = filteredTeams.filter(t => t.status === "draft");
+    if (selectedTeamIds.length === draftTeams.length && draftTeams.length > 0) {
+      setSelectedTeamIds([]);
+    } else {
+      setSelectedTeamIds(draftTeams.map(t => t.id));
+    }
+  };
+
+  const handleSelectTeam = (id: string) => {
+    setSelectedTeamIds(prev => 
+      prev.includes(id) ? prev.filter(tId => tId !== id) : [...prev, id]
+    );
+  };
 
   if (!eventId) return <div className="p-7 text-gray-500">Please select an event first.</div>;
+
+  const draftCount = filteredTeams.filter(t => t.status === "draft").length;
+  const isAllSelected = draftCount > 0 && selectedTeamIds.length === draftCount;
 
   return (
     <div className="min-h-screen bg-[#f7f5fb] px-7 py-7">
@@ -133,7 +160,6 @@ export default function TeamFormation() {
           <p className="text-[#667085] mt-1 text-sm">Choose a method to generate teams for the participants.</p>
           
           <div className="flex gap-5 mt-6">
-            
             {/* RANDOM CARD */}
             <div 
               onClick={() => setGenerationMethod("random")}
@@ -194,13 +220,26 @@ export default function TeamFormation() {
               </div>
             </div>
             
-            {/* SEARCH & REGENERATE */}
-            <div className="flex gap-4">
+            {/* SEARCH, SELECT ALL & REGENERATE */}
+            <div className="flex gap-4 items-center">
+              
+              {/* ALWAYS VISIBLE SELECT ALL BUTTON */}
+              <label className={`flex items-center gap-2 cursor-pointer bg-white border border-[#ebe7f2] rounded-2xl px-4 py-3 transition ${draftCount === 0 ? 'opacity-50' : 'hover:bg-gray-50'}`}>
+                <input 
+                  type="checkbox" 
+                  checked={isAllSelected}
+                  onChange={handleSelectAll}
+                  disabled={draftCount === 0}
+                  className="w-4 h-4 text-[#7c3aed] rounded focus:ring-[#7c3aed] cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="text-sm font-medium text-slate-700">Select All Drafts</span>
+              </label>
+
               <input 
                 placeholder="🔍 Search teams..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-[240px] border border-[#ebe7f2] bg-white rounded-2xl px-5 py-3 outline-none text-sm"
+                className="w-[200px] border border-[#ebe7f2] bg-white rounded-2xl px-5 py-3 outline-none text-sm"
               />
               <button 
                 onClick={handleRegenerate}
@@ -223,10 +262,25 @@ export default function TeamFormation() {
               </div>
             ) : (
               filteredTeams.map((team, index) => (
-                <div key={team.id} className="bg-white border border-[#ebe7f2] rounded-[28px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+                <div 
+                  key={team.id} 
+                  className={`bg-white border rounded-[28px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-colors ${
+                    selectedTeamIds.includes(team.id) ? "border-[#8b5cf6] ring-1 ring-[#8b5cf6]" : "border-[#ebe7f2]"
+                  }`}
+                >
                   {/* HEADER */}
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
+                      
+                      {/* ALWAYS VISIBLE TEAM CHECKBOX */}
+                      <input 
+                        type="checkbox" 
+                        checked={team.status === "approved" || selectedTeamIds.includes(team.id)}
+                        onChange={() => handleSelectTeam(team.id)}
+                        disabled={team.status === "approved"}
+                        className="w-5 h-5 text-[#7c3aed] rounded focus:ring-[#7c3aed] cursor-pointer mr-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                      />
+
                       <div className="w-9 h-9 rounded-xl bg-[#9333ea] text-white text-sm font-bold flex items-center justify-center">
                         {index + 1}
                       </div>
@@ -312,10 +366,10 @@ export default function TeamFormation() {
               </button>
               <button 
                 onClick={handleApprove}
-                disabled={teams.length === 0 || teams.every(t => t.status === "approved")}
-                className="w-full bg-[#dcfce7] text-[#16a34a] rounded-2xl p-4 font-medium hover:bg-[#bbf7d0] transition disabled:opacity-50"
+                disabled={selectedTeamIds.length === 0}
+                className="w-full bg-[#dcfce7] text-[#16a34a] rounded-2xl p-4 font-medium hover:bg-[#bbf7d0] transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                ✓ Approve Teams
+                {selectedTeamIds.length > 0 ? `✓ Approve (${selectedTeamIds.length})` : "✓ Approve Teams"}
               </button>
               <button 
                 onClick={handleClear}
