@@ -1,61 +1,95 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
+from datetime import datetime
 
 from app.db import get_db
-from app.models.distribution_rules import DistributionRules
-from app.models.event import Event
-from app.models.committee_user import CommitteeUser
+from app.models.distribution_rules import EventTeamSettings
+from app.models.distribution_rules import CustomRule
 from app.routers.auth import get_current_committee_user
 
 router = APIRouter()
 
+# --- PYDANTIC SCHEMAS ---
 
-class RulesPayload(BaseModel):
-    team_size: int = 3
-    max_per_institution: Optional[int] = 1
-    required_skills: Optional[list[str]] = None
-    balance_by: Optional[list[str]] = None
-    exclusions: Optional[dict] = None
+class TeamSettingsPayload(BaseModel):
+    team_size: int
+    max_per_institution: int
+    min_per_institution: int
+    
 
+class CustomRulePayload(BaseModel):
+    title: str
+    category: str
+    description: str
 
-@router.put("/{event_id}/rules")
-def upsert_rules(
-    event_id: UUID,
-    body: RulesPayload,
-    db: Session = Depends(get_db),
-    _: CommitteeUser = Depends(get_current_committee_user),
-):
-    event = db.get(Event, event_id)
-    if not event:
-        raise HTTPException(status_code=404, detail="Event not found")
+class CustomRuleResponse(CustomRulePayload):
+    id: UUID
+    updated_at: datetime # Simplification for frontend
 
-    rules = db.query(DistributionRules).filter(DistributionRules.event_id == event_id).first()
+    class Config:
+        orm_mode = True
 
-    if rules:
-        rules.team_size = body.team_size
-        rules.max_per_institution = body.max_per_institution
-        rules.required_skills = body.required_skills
-        rules.balance_by = body.balance_by
-        rules.exclusions = body.exclusions
+# --- TEAM SETTINGS APIs ---
+
+@router.get("/{event_id}/team-settings")
+def get_team_settings(event_id: UUID, db: Session = Depends(get_db)):
+    settings = db.query(EventTeamSettings).filter(EventTeamSettings.event_id == event_id).first()
+    if not settings:
+        # Return defaults if none exist yet
+        return {"team_size": 3, "min_per_institution": 1, "max_per_institution": 2}
+    return settings
+
+@router.put("/{event_id}/team-settings")
+def update_team_settings(event_id: UUID, body: TeamSettingsPayload, db: Session = Depends(get_db)):
+    settings = db.query(EventTeamSettings).filter(EventTeamSettings.event_id == event_id).first()
+    if settings:
+        settings.team_size = body.team_size
+        settings.max_per_institution = body.max_per_institution
+        settings.min_per_institution = body.min_per_institution
     else:
-        rules = DistributionRules(event_id=event_id, **body.model_dump())
-        db.add(rules)
-
+        settings = EventTeamSettings(event_id=event_id, **body.model_dump())
+        db.add(settings)
+    
     db.commit()
-    db.refresh(rules)
-    return rules
+    db.refresh(settings)
+    return settings
 
+# --- CUSTOM RULES APIs ---
 
-@router.get("/{event_id}/rules")
-def get_rules(
-    event_id: UUID,
-    db: Session = Depends(get_db),
-    _: CommitteeUser = Depends(get_current_committee_user),
-):
-    rules = db.query(DistributionRules).filter(DistributionRules.event_id == event_id).first()
-    if not rules:
-        raise HTTPException(status_code=404, detail="No rules configured yet")
-    return rules
+@router.get("/{event_id}/rules", response_model=List[CustomRuleResponse])
+def get_rules(event_id: UUID, db: Session = Depends(get_db)):
+    return db.query(CustomRule).filter(CustomRule.event_id == event_id).order_by(CustomRule.updated_at.desc()).all()
+
+@router.post("/{event_id}/rules", response_model=CustomRuleResponse)
+def create_rule(event_id: UUID, body: CustomRulePayload, db: Session = Depends(get_db)):
+    rule = CustomRule(event_id=event_id, **body.model_dump())
+    db.add(rule)
+    db.commit()
+    db.refresh(rule)
+    return rule
+
+@router.put("/{event_id}/rules/{rule_id}", response_model=CustomRuleResponse)
+def update_rule(event_id: UUID, rule_id: UUID, body: CustomRulePayload, db: Session = Depends(get_db)):
+    rule = db.query(CustomRule).filter(CustomRule.id == rule_id, CustomRule.event_id == event_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    
+    rule.title = body.title
+    rule.category = body.category
+    rule.description = body.description
+    db.commit()
+    db.refresh(rule)
+    return rule
+
+@router.delete("/{event_id}/rules/{rule_id}")
+def delete_rule(event_id: UUID, rule_id: UUID, db: Session = Depends(get_db)):
+    rule = db.query(CustomRule).filter(CustomRule.id == rule_id, CustomRule.event_id == event_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    
+    db.delete(rule)
+    db.commit()
+    return {"detail": "Deleted"}
