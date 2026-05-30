@@ -9,6 +9,7 @@ import OverviewPage from "./pages/Committee Dashboard/Dashboard";
 import ParticipantsPage from "./pages/Committee Dashboard/ParticipantsPage";
 import TeamFormation from "./pages/Committee Dashboard/TeamFormation";
 import RulesPage from "./pages/Committee Dashboard/Rules";
+import MultipleEvent from "./pages/Committee Dashboard/MultipleEvent";
 
 // import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 
@@ -78,6 +79,13 @@ export default function App() {
           <Route
             path="rules"
             element={<RulesPage />}
+          />
+
+          {/* Multiple Event */}
+
+          <Route
+           path="multiple-events"
+          element={<MultipleEvent />}
           />
 
         </Route>
