@@ -10,6 +10,9 @@ import ParticipantsPage from "./pages/Committee Dashboard/ParticipantsPage";
 import TeamFormation from "./pages/Committee Dashboard/TeamFormation";
 import RulesPage from "./pages/Committee Dashboard/Rules";
 import MultipleEvent from "./pages/Committee Dashboard/MultipleEvent";
+import CurrentEvent from "./pages/Committee Dashboard/CurrentEvent";
+import Communication from "./pages/Committee Dashboard/Communication";
+import Scoring from "./pages/Committee Dashboard/Scoring";
 
 // import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 
@@ -86,6 +89,21 @@ export default function App() {
           <Route
            path="multiple-events"
           element={<MultipleEvent />}
+          />
+
+          <Route
+           path="current-event"
+           element={<CurrentEvent />}
+          />
+
+          <Route
+          path="communication"
+          element={<Communication />}
+          />
+
+          <Route
+          path="scoring"
+          element={<Scoring />}
           />
 
         </Route>

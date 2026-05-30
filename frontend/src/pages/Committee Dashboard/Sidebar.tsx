@@ -138,11 +138,12 @@ import {
   FolderKanban,
   Trophy,
   Shield,
-  Settings,
   Bell,
   MoreHorizontal,
   LogOut,
-  Sparkles
+  Sparkles,
+  CalendarDays,
+  Send
 } from "lucide-react";
 
 import {
@@ -158,6 +159,13 @@ const NAV = [
   },
 
   {
+    to: "/dashboard/current-event",
+    label: "Current Event",
+    icon: <CalendarDays size={18} />
+  },
+
+
+  {
     to: "/dashboard/multiple-events",
     label: "Multiple Events",
     icon: <FolderKanban size={18} />
@@ -170,8 +178,14 @@ const NAV = [
   },
 
   {
-    to: "/dashboard/submission",
-    label: "Submission",
+  to: "/dashboard/communication",
+  label: "Communication",
+  icon: <Send size={18} />
+  },
+
+  {
+    to: "/dashboard/scoring",
+    label: "Scoring",
     icon: <FolderKanban size={18} />
   },
 
@@ -193,11 +207,6 @@ const NAV = [
     icon: <Sparkles size={18} />
   },
 
-  {
-    to: "/dashboard/settings",
-    label: "Settings",
-    icon: <Settings size={18} />
-  }
 ];
 
 export default function DashboardLayout() {
