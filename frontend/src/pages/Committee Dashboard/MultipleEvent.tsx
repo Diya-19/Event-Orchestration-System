@@ -39,7 +39,7 @@ export default function MultipleEvent(): JSX.Element {
   return (
     <div className="p-8 bg-[#fafafa] min-h-screen">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">
-        Overview
+        Running Events
       </h1>
 
       {/* Create Event */}
