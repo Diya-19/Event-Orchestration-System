@@ -147,7 +147,8 @@ import {
 
 import {
   NavLink,
-  Outlet
+  Outlet,
+  useSearchParams
 } from "react-router-dom";
 
 const NAV = [
@@ -195,6 +196,9 @@ const NAV = [
 ];
 
 export default function DashboardLayout() {
+
+  const [searchParams] = useSearchParams();
+  const eventId = searchParams.get("event_id");
 
   return (
 
@@ -335,53 +339,31 @@ export default function DashboardLayout() {
           ">
 
             {
-
-              NAV.map((item) => (
-
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) => `
-
-                  flex
-                  items-center
-                  gap-3
-                  px-4
-                  py-3
-                  rounded-2xl
-                  text-[15px]
-                  font-medium
-                  transition-all
-
-                  ${
-
-                    isActive
-
-                    ?
-
-                    "bg-[#f3e8ff] text-[#7c3aed]"
-
-                    :
-
-                    "text-[#667085] hover:bg-[#f8f5fc]"
-
-                  }
-
-                  `}
-                >
-
-                  {item.icon}
-
-                  <span>
-
-                    {item.label}
-
-                  </span>
-
-                </NavLink>
-
-              ))
-
+              NAV.map((item) => {
+                const targetUrl = eventId ? `${item.to}?event_id=${eventId}` : item.to;
+                
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={targetUrl}
+                    className={({ isActive }) => `
+                    flex
+                    items-center
+                    gap-3
+                    px-4
+                    py-3
+                    rounded-2xl
+                    text-[15px]
+                    font-medium
+                    transition-all
+                    ${isActive ? "bg-[#f3e8ff] text-[#7c3aed]" : "text-[#667085] hover:bg-[#f8f5fc]"}
+                    `}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })
             }
 
           </nav>

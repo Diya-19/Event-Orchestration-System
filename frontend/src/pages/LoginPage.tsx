@@ -1,19 +1,65 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "../lib/api";
+import { setToken } from "../lib/auth";
 import {
   Users,
   Shield,
   Settings,
   Zap,
   Trophy,
-  // Mail
 } from "lucide-react";
 
 type Mode = "login" | "signup";
 
 export default function LoginPage() {
 
+  const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("login");
-  const [role, setRole] = useState("Participant");
+  const [role, setRole] = useState("organizer");
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    setError("");
+    if (!email || !password || (mode === "signup" && !name)) {
+      setError("Please fill in all fields.");
+      return;
+    }
+    setLoading(true);
+    try {
+      if (mode === "signup") {
+        await api.post("/api/auth/signup", {
+          email,
+          password,
+          name,
+          role: role.toLowerCase()
+        });
+      }
+      
+      const res = await api.post("/api/auth/login", {
+        email,
+        password
+      });
+      
+      setToken(res.data.access_token);
+      window.location.href = "/dashboard";
+    } catch (err: any) {
+      if (err.response?.data?.detail) {
+        // Backend returns detail string or array
+        const detail = err.response.data.detail;
+        setError(typeof detail === "string" ? detail : JSON.stringify(detail));
+      } else {
+        setError(err.message || "Failed to authenticate");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
 
@@ -197,22 +243,22 @@ export default function LoginPage() {
             <RoleCard
               title="Participant"
               icon={<Users />}
-              active={role === "Participant"}
-              onClick={() => setRole("Participant")}
+              active={role === "participant"}
+              onClick={() => setRole("participant")}
             />
 
             <RoleCard
               title="Judge"
               icon={<Shield />}
-              active={role === "Judge"}
-              onClick={() => setRole("Judge")}
+              active={role === "judge"}
+              onClick={() => setRole("judge")}
             />
 
             <RoleCard
-              title="Admin"
+              title="Organizer"
               icon={<Settings />}
-              active={role === "Admin"}
-              onClick={() => setRole("Admin")}
+              active={role === "organizer"}
+              onClick={() => setRole("organizer")}
             />
 
           </div>
@@ -289,81 +335,40 @@ export default function LoginPage() {
           ">
 
             {
-
               mode === "signup"
-
               &&
-
               <input
-
                 placeholder="Name"
-
-                className="
-                w-full
-                border
-                rounded-xl
-                p-4
-                outline-none
-                "
-
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full border rounded-xl p-4 outline-none"
               />
-
             }
 
             <input
-
               placeholder="Email"
-
-              className="
-              w-full
-              border
-              rounded-xl
-              p-4
-              outline-none
-              "
-
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full border rounded-xl p-4 outline-none"
             />
 
             <input
-
               type="password"
-
               placeholder="Password"
-
-              className="
-              w-full
-              border
-              rounded-xl
-              p-4
-              outline-none
-              "
-
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+              className="w-full border rounded-xl p-4 outline-none"
             />
+            
+            {error && <div className="text-red-500 text-sm px-1 font-medium">{error}</div>}
 
-            <button className="
-            w-full
-            bg-purple-600
-            hover:bg-purple-700
-            text-white
-            rounded-xl
-            p-4
-            font-semibold
-            ">
-
-              {
-
-                mode === "login"
-
-                  ?
-
-                  "Log In"
-
-                  :
-
-                  "Create Account"
-
-              }
-
+            <button 
+              onClick={handleSubmit}
+              disabled={loading}
+              className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl p-4 font-semibold"
+            >
+              {loading ? "Please wait..." : (mode === "login" ? "Log In" : "Create Account")}
             </button>
 
           </div>

@@ -8,16 +8,14 @@ from app.routers import auth
 from app.routers.committee import (
     events,
     participants,
-    teams,
-    approvals,
-    evaluators,
-    scores,
     dashboard,
+    distribution_rules,
+    event_rules,
 )
 
 # Portal Routers
-from app.routers.portal import participant as portal_participant
-from app.routers.portal import evaluator as portal_evaluator
+# from app.routers.portal import participant as portal_participant
+# from app.routers.portal import evaluator as portal_evaluator
 
 app = FastAPI(title="Event Orchestration API", version="1.0.0")
 
@@ -39,11 +37,9 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(events.router, prefix="/api/events", tags=["Events"])
 app.include_router(participants.router, prefix="/api/events", tags=["Participants"])
-app.include_router(teams.router, prefix="/api/teams", tags=["Teams"])
-app.include_router(approvals.router, prefix="/api/approvals", tags=["Approvals"])
-app.include_router(evaluators.router, prefix="/api/evaluators", tags=["Evaluators"])
-app.include_router(scores.router, prefix="/api/scores", tags=["Scores"])
+app.include_router(distribution_rules.router, prefix="/api/events", tags=["Distribution Rules"])
+app.include_router(event_rules.router, prefix="/api/events", tags=["Event Rules"])
 
 # Public/Portal API
-app.include_router(portal_participant.router, prefix="/api/portal/participant", tags=["Portal - Participant"])
-app.include_router(portal_evaluator.router, prefix="/api/portal/evaluator", tags=["Portal - Evaluator"])
+# app.include_router(portal_participant.router, prefix="/api/portal/participant", tags=["Portal - Participant"])
+# app.include_router(portal_evaluator.router, prefix="/api/portal/evaluator", tags=["Portal - Evaluator"])
