@@ -92,8 +92,8 @@ export default function LoginPage() {
       <div className="hidden lg:flex w-1/2 flex-col justify-center px-14 relative">
         {/* LOGO */}
         <div className="absolute top-10 left-10 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold">
-            H
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-r from-[#7c3aed] to-[#9333ea] text-white flex items-center justify-center shadow-md text-lg">
+                ✦
           </div>
           <h2 className="text-3xl font-bold">HackFlow</h2>
         </div>

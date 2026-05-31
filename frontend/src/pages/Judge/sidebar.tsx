@@ -16,9 +16,9 @@ export default function JudgeSidebar() {
     <div className="w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col flex-shrink-0">
       {/* Logo Area */}
       <div className="p-6 flex items-center gap-3 border-b border-gray-100">
-        <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-          <span className="text-white font-bold">⚖️</span>
-        </div>
+        <div className="w-11 h-11 rounded-2xl bg-gradient-to-r from-[#7c3aed] to-[#9333ea] text-white flex items-center justify-center shadow-md text-lg">
+                ✦
+              </div>
         <span className="text-xl font-bold text-gray-800">HackFlow</span>
       </div>
 
