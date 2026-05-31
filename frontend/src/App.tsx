@@ -13,6 +13,7 @@ import MultipleEvent from "./pages/Committee Dashboard/MultipleEvent";
 import CurrentEvent from "./pages/Committee Dashboard/CurrentEvent";
 import Communication from "./pages/Committee Dashboard/Communication";
 import Scoring from "./pages/Committee Dashboard/Scoring";
+import Results from "./pages/Committee Dashboard/Results";
 
 // import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 
@@ -104,6 +105,11 @@ export default function App() {
           <Route
           path="scoring"
           element={<Scoring />}
+          />
+
+          <Route
+          path="results"
+          element={<Results />}
           />
 
         </Route>
