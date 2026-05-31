@@ -14,10 +14,13 @@ import CurrentEvent from "./pages/Committee Dashboard/CurrentEvent";
 import Communication from "./pages/Committee Dashboard/Communication";
 import Scoring from "./pages/Committee Dashboard/Scoring";
 import Results from "./pages/Committee Dashboard/Results";
+import JudgeManagement from "./pages/Committee Dashboard/JudgeManagent";
 
 // Judge Pages
 import JudgeSidebar from "./pages/Judge/sidebar";
 import JudgeDashboard from "./pages/Judge/dashboard";
+import MyEvaluation from "./pages/Judge/Evaluation";
+import EvaluationPage from "./pages/Judge/EvaluationPage";
 
 // TEMP AUTH BYPASS
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -64,45 +67,47 @@ export default function App() {
           <Route path="scoring" element={<Scoring />} />
 
           <Route path="results" element={<Results />} />
+
+          <Route path="judge-management" element={<JudgeManagement />} />
         </Route>
 
         {/* JUDGE DASHBOARD */}
-        <Route
-          path="/judge"
-          element={
-            <RequireAuth>
-              <div className="flex min-h-screen bg-gray-50">
-                <JudgeSidebar />
-                <div className="flex-1">
-                  <Outlet />
-                </div>
-              </div>
-            </RequireAuth>
-          }
-        >
-          {/* Judge Dashboard Home */}
-          <Route index element={<JudgeDashboard />} />
+<Route
+  path="/judge"
+  element={
+    <RequireAuth>
+      <div className="flex min-h-screen bg-gray-50">
+        <JudgeSidebar />
 
-          {/* My Evaluations */}
-          <Route
-            path="evaluations"
-            element={
-              <div className="p-8">
-                <h1 className="text-2xl font-bold">My Evaluations</h1>
-                <p className="text-gray-600 mt-2">
-                  Your assigned evaluations will appear here.
-                </p>
-              </div>
-            }
-          />
-        </Route>
+        <div className="flex-1 overflow-y-auto">
+          <Outlet />
+        </div>
+      </div>
+    </RequireAuth>
+  }
+>
+  {/* Dashboard Home */}
+  <Route index element={<JudgeDashboard />} />
 
-        {/* DEFAULT REDIRECT */}
-        <Route
-          path="*"
-          element={<Navigate to="/dashboard/team-formation" replace />}
-        />
-      </Routes>
+  {/* My Evaluations */}
+  <Route
+    path="evaluations"
+    element={<MyEvaluation />}
+  />
+  {/* Evaluation Page */}
+  <Route
+  path="evaluation/:teamId"
+  element={<EvaluationPage />}
+  />
+
+</Route>
+
+{/* DEFAULT REDIRECT */}
+<Route
+  path="*"
+  element={<Navigate to="/dashboard/team-formation" replace />}
+/>
+</Routes>
     </BrowserRouter>
   );
 }
