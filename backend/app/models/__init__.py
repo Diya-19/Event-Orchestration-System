@@ -4,7 +4,9 @@ from app.models.event import Event
 
 from app.models.participant import Participant
 
-from app.models.distribution_rules import DistributionRules
+from app.models.distribution_rules import EventTeamSettings
+
+from app.models.distribution_rules import CustomRule
 
 from app.models.team import Team
 

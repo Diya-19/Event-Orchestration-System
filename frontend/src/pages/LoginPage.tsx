@@ -5,7 +5,7 @@ import {
   Settings,
   Zap,
   Trophy,
-  Mail
+  // Mail
 } from "lucide-react";
 
 type Mode = "login" | "signup";
@@ -543,34 +543,34 @@ active
 
 }
 
-function SocialButton({
-icon,
-text
-}:any){
+// function SocialButton({
+// icon,
+// text
+// }:any){
 
-return(
+// return(
 
-<button className="
-w-full
-border
-rounded-xl
-p-4
-flex
-justify-center
-items-center
-gap-3
-">
+// <button className="
+// w-full
+// border
+// rounded-xl
+// p-4
+// flex
+// justify-center
+// items-center
+// gap-3
+// ">
 
-{icon}
+// {icon}
 
-<span>
+// <span>
 
-Continue with {text}
+// Continue with {text}
 
-</span>
+// </span>
 
-</button>
+// </button>
 
-)
+// )
 
-}
+// }

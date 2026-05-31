@@ -13,6 +13,7 @@ from app.routers.committee import (
     evaluators,
     scores,
     dashboard,
+    rules
 )
 
 # Portal Routers
@@ -39,10 +40,11 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(events.router, prefix="/api/events", tags=["Events"])
 app.include_router(participants.router, prefix="/api/events", tags=["Participants"])
-app.include_router(teams.router, prefix="/api/teams", tags=["Teams"])
+app.include_router(teams.router, prefix="/api/events/{event_id}/teams", tags=["teams"])
 app.include_router(approvals.router, prefix="/api/approvals", tags=["Approvals"])
 app.include_router(evaluators.router, prefix="/api/evaluators", tags=["Evaluators"])
 app.include_router(scores.router, prefix="/api/scores", tags=["Scores"])
+app.include_router(rules.router, prefix="/api/events", tags=["rules"])
 
 # Public/Portal API
 app.include_router(portal_participant.router, prefix="/api/portal/participant", tags=["Portal - Participant"])
