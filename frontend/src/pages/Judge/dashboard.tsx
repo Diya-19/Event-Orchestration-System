@@ -7,7 +7,6 @@ import {
   Clock, 
   ArrowRight, 
   CalendarDays, 
-  MessageSquare, 
   Bell  // ✅ Changed from AlertCircle to Bell
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
