@@ -1,8 +1,9 @@
 // frontend/src/pages/Judge/sidebar.tsx
 
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, CheckCircle, LogOut } from "lucide-react";
+import { clearJudgeToken } from "../../lib/auth";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/judge" },
@@ -11,6 +12,12 @@ const menuItems = [
 
 export default function JudgeSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    clearJudgeToken();
+    navigate("/login");
+  };
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col flex-shrink-0">
@@ -48,7 +55,10 @@ export default function JudgeSidebar() {
 
       {/* Logout */}
       <div className="p-4 border-t border-gray-100">
-        <button className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all">
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all"
+        >
           <LogOut size={20} />
           Logout
         </button>

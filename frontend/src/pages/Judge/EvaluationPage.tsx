@@ -1,25 +1,95 @@
-import { ArrowLeft, Download, GitBranch, Play } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { api } from "../../lib/api";
 
 export default function EvaluationPage() {
   const navigate = useNavigate();
   const { teamId } = useParams();
 
-  const [scores, setScores] = useState({
-    understanding: 8,
-    implementation: 9,
-    communication: 8,
-    innovation: 9,
-    impact: 8,
-  });
+  const [loading, setLoading] = useState(true);
+  const [team, setTeam] = useState<any>({});
+  const [rubric, setRubric] = useState<any>({});
+  const [scores, setScores] = useState<any>({});
+  const [comments, setComments] = useState("");
+  const [status, setStatus] = useState("");
+  const [deliverables, setDeliverables] = useState<any[]>([]);
 
-  const total =
-    scores.understanding * 0.2 +
-    scores.implementation * 0.3 +
-    scores.communication * 0.2 +
-    scores.innovation * 0.2 +
-    scores.impact * 0.1;
+  useEffect(() => {
+    const fetchTeamDetail = async () => {
+      try {
+        const { data } = await api.get(`/api/judge/evaluations/${teamId}`);
+        setTeam(data.team);
+        setRubric(data.rubric || {});
+        setScores(data.evaluation?.scores || {});
+        setComments(data.evaluation?.comments || "");
+        setStatus(data.status);
+        setDeliverables(data.deliverables || []);
+      } catch (err) {
+        console.error("Failed to fetch team evaluation details", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (teamId) fetchTeamDetail();
+  }, [teamId]);
+
+  const handleScoreChange = (criteria: string, value: number) => {
+    setScores((prev: any) => ({
+      ...prev,
+      [criteria]: value,
+    }));
+  };
+
+  const handleSaveDraft = async () => {
+    try {
+      await api.put(`/api/judge/evaluations/${teamId}`, {
+        scores,
+        comments,
+      });
+      alert("Draft saved successfully!");
+      setStatus("Draft");
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to save draft");
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!window.confirm("Are you sure you want to submit? This action cannot be undone.")) return;
+    try {
+      await api.post(`/api/judge/evaluations/${teamId}/submit`, {
+        scores,
+        comments,
+      });
+      alert("Evaluation submitted successfully!");
+      setStatus("Submitted");
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to submit evaluation");
+    }
+  };
+
+  const isReadOnly = status === "Submitted";
+
+  // Calculate total from selected scores
+  let total = 0;
+  if (Object.keys(rubric).length > 0) {
+    for (const [key, weight] of Object.entries(rubric)) {
+      total += (scores[key] || 0) * Number(weight);
+    }
+  } else {
+    const scoreVals = Object.values(scores) as number[];
+    if (scoreVals.length > 0) {
+      total = scoreVals.reduce((a, b) => a + Number(b), 0) / scoreVals.length;
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-8 bg-gray-50 min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">Loading team details...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -35,20 +105,20 @@ export default function EvaluationPage() {
       <div className="flex justify-between items-start mb-6">
         <div>
           <h1 className="text-3xl font-bold">
-            Team Alpha
+            {team.name}
           </h1>
 
           <p className="text-gray-500 mt-2">
-            Intelligent Event Orchestration System
+            {team.challenge}
           </p>
         </div>
 
         <div className="text-right">
           <p className="font-semibold">
-            Round 2
+            Round 1
           </p>
           <p className="text-gray-500">
-            Team ID #{teamId}
+            Team ID #{teamId?.substring(0, 8)}...
           </p>
         </div>
       </div>
@@ -63,9 +133,7 @@ export default function EvaluationPage() {
             </h2>
 
             <p className="text-gray-600 leading-relaxed">
-              A centralized platform that automates
-              event orchestration, communication,
-              evaluation, and attendee engagement.
+              {team.challenge || "No project summary provided."}
             </p>
           </div>
 
@@ -76,32 +144,23 @@ export default function EvaluationPage() {
             </h2>
 
             <div className="space-y-3">
-              <button className="flex items-center gap-3 w-full border rounded-lg p-3 hover:bg-gray-50">
-                <Download size={18} />
-                Project Presentation.pdf
-              </button>
-
-              <button className="flex items-center gap-3 w-full border rounded-lg p-3 hover:bg-gray-50">
-                <Download size={18} />
-                System Architecture.pdf
-              </button>
-
-              <button className="flex items-center gap-3 w-full border rounded-lg p-3 hover:bg-gray-50">
-                <GitBranch size={18} />
-                GitHub Repository
-              </button>
-
-              <button className="flex items-center gap-3 w-full border rounded-lg p-3 hover:bg-gray-50">
-                <Play size={18} />
-                Demo Video
-              </button>
+              {deliverables.length === 0 ? (
+                <p className="text-gray-500">No deliverables uploaded.</p>
+              ) : (
+                deliverables.map((d: any, i: number) => (
+                  <button key={i} className="flex items-center gap-3 w-full border rounded-lg p-3 hover:bg-gray-50">
+                    <Download size={18} />
+                    {d.name || "Deliverable"}
+                  </button>
+                ))
+              )}
             </div>
           </div>
 
           {/* Evaluation */}
           <div className="bg-white rounded-xl border p-6">
             <h2 className="text-xl font-semibold mb-6">
-              Evaluation Form
+              Evaluation Form {isReadOnly && "(Read Only)"}
             </h2>
 
             <table className="w-full">
@@ -120,75 +179,35 @@ export default function EvaluationPage() {
               </thead>
 
               <tbody>
-                <tr>
-                  <td className="py-4">
-                    Problem Understanding
-                  </td>
-                  <td>20%</td>
-                  <td>
-                    <select className="border rounded-lg px-3 py-2">
-                      {[...Array(11)].map((_, i) => (
-                        <option key={i}>{i}</option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-
-                <tr>
-                  <td className="py-4">
-                    Technical Implementation
-                  </td>
-                  <td>30%</td>
-                  <td>
-                    <select className="border rounded-lg px-3 py-2">
-                      {[...Array(11)].map((_, i) => (
-                        <option key={i}>{i}</option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-
-                <tr>
-                  <td className="py-4">
-                    Communication
-                  </td>
-                  <td>20%</td>
-                  <td>
-                    <select className="border rounded-lg px-3 py-2">
-                      {[...Array(11)].map((_, i) => (
-                        <option key={i}>{i}</option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-
-                <tr>
-                  <td className="py-4">
-                    Innovation
-                  </td>
-                  <td>20%</td>
-                  <td>
-                    <select className="border rounded-lg px-3 py-2">
-                      {[...Array(11)].map((_, i) => (
-                        <option key={i}>{i}</option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-
-                <tr>
-                  <td className="py-4">
-                    Impact
-                  </td>
-                  <td>10%</td>
-                  <td>
-                    <select className="border rounded-lg px-3 py-2">
-                      {[...Array(11)].map((_, i) => (
-                        <option key={i}>{i}</option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
+                {Object.keys(rubric).length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="py-4 text-center text-gray-500">
+                      No grading criteria configured for this event.
+                    </td>
+                  </tr>
+                ) : (
+                  Object.entries(rubric).map(([criteria, weight]: [string, any]) => (
+                    <tr key={criteria}>
+                      <td className="py-4 capitalize">
+                        {criteria.replace(/_/g, " ")}
+                      </td>
+                      <td>{Number(weight) * 100}%</td>
+                      <td>
+                        <select
+                          className="border rounded-lg px-3 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          value={scores[criteria] ?? ""}
+                          onChange={(e) => handleScoreChange(criteria, Number(e.target.value))}
+                          disabled={isReadOnly}
+                        >
+                          <option value="" disabled>Score</option>
+                          {[...Array(11)].map((_, i) => (
+                            <option key={i} value={i}>{i}</option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
 
@@ -208,18 +227,29 @@ export default function EvaluationPage() {
             <textarea
               rows={6}
               placeholder="Write your feedback..."
-              className="w-full border rounded-lg p-4"
+              className="w-full border rounded-lg p-4 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              disabled={isReadOnly}
             />
 
-            <div className="flex justify-end gap-4 mt-6">
-              <button className="px-6 py-3 border rounded-lg">
-                Save Draft
-              </button>
+            {!isReadOnly && (
+              <div className="flex justify-end gap-4 mt-6">
+                <button
+                  onClick={handleSaveDraft}
+                  className="px-6 py-3 border rounded-lg hover:bg-gray-50"
+                >
+                  Save Draft
+                </button>
 
-              <button className="px-6 py-3 bg-violet-600 text-white rounded-lg">
-                Submit Evaluation
-              </button>
-            </div>
+                <button
+                  onClick={handleSubmit}
+                  className="px-6 py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+                >
+                  Submit Evaluation
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -231,30 +261,16 @@ export default function EvaluationPage() {
             </h2>
 
             <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span>Problem Understanding</span>
-                <span>20%</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span>Technical Implementation</span>
-                <span>30%</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span>Communication</span>
-                <span>20%</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span>Innovation</span>
-                <span>20%</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span>Impact</span>
-                <span>10%</span>
-              </div>
+              {Object.keys(rubric).length === 0 ? (
+                <p className="text-gray-500">None</p>
+              ) : (
+                Object.entries(rubric).map(([criteria, weight]: [string, any]) => (
+                  <div key={criteria} className="flex justify-between">
+                    <span className="capitalize">{criteria.replace(/_/g, " ")}</span>
+                    <span>{Number(weight) * 100}%</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

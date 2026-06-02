@@ -34,6 +34,24 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   return children;
 }
 
+// JUDGE AUTH (With DEV_MODE Support)
+function RequireJudgeAuth({ children }: { children: JSX.Element }) {
+  const isDev = import.meta.env.VITE_DEV_MODE === "true";
+  
+  if (isDev) {
+    return children;
+  }
+  
+  const token = localStorage.getItem("evaluator_token");
+  if (!token) {
+    // If no token exists, they shouldn't access the judge pages. 
+    // Redirecting to login as fallback, or show unauthorized.
+    return <Navigate to="/login" replace />; 
+  }
+  
+  return children;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -66,14 +84,14 @@ export default function App() {
         <Route
           path="/judge"
           element={
-            <RequireAuth>
+            <RequireJudgeAuth>
               <div className="flex min-h-screen bg-gray-50">
                 <JudgeSidebar />
                 <div className="flex-1 overflow-y-auto">
                   <Outlet />
                 </div>
               </div>
-            </RequireAuth>
+            </RequireJudgeAuth>
           }
         >
           <Route index element={<JudgeDashboard />} />

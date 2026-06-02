@@ -1,47 +1,51 @@
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import {
   Search,
   Users,
   Clock,
   CheckCircle,
 } from "lucide-react";
-
-const teams = [
-  {
-    id: 1,
-    name: "Team Alpha",
-    project: "Intelligent Event Orchestration System",
-    round: "Round 2",
-    status: "Pending",
-  },
-  {
-    id: 2,
-    name: "Team Beta",
-    project: "Smart Resource Allocator",
-    round: "Round 2",
-    status: "Pending",
-  },
-  {
-    id: 3,
-    name: "Team Gamma",
-    project: "AI-Powered Event Companion",
-    round: "Round 2",
-    status: "In Progress",
-  },
-  {
-    id: 4,
-    name: "Team Delta",
-    project: "Predictive Crowd Management",
-    round: "Round 2",
-    status: "Completed",
-  },
-];
+import { api } from "../../lib/api";
 
 export default function MyEvaluation() {
   const navigate = useNavigate();
+  const [teamsData, setTeamsData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
+  useEffect(() => {
+    const fetchEvaluations = async () => {
+      try {
+        const { data } = await api.get("/api/judge/evaluations");
+        setTeamsData(data);
+      } catch (err) {
+        console.error("Failed to fetch evaluations", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEvaluations();
+  }, []);
+
+  const assignedCount = teamsData.length;
+  const pendingCount = teamsData.filter(t => t.status === "Pending").length;
+  const completedCount = teamsData.filter(t => t.status === "Completed").length;
+
+  const getUIStatus = (backendStatus: string) => {
+    switch (backendStatus) {
+      case "Submitted":
+        return "Completed";
+      case "Draft":
+        return "In Progress";
+      case "Not Started":
+      default:
+        return "Pending";
+    }
+  };
+
+  const getStatusColor = (uiStatus: string) => {
+    switch (uiStatus) {
       case "Completed":
         return "bg-green-100 text-green-700";
       case "In Progress":
@@ -51,10 +55,11 @@ export default function MyEvaluation() {
     }
   };
 
-  const getActionButton = (team: any) => {
-    if (team.status === "Completed") {
+  const getActionButton = (teamId: string, uiStatus: string) => {
+    if (uiStatus === "Completed") {
       return (
         <button
+          onClick={() => navigate(`/judge/evaluation/${teamId}`)}
           className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
         >
           View
@@ -62,10 +67,10 @@ export default function MyEvaluation() {
       );
     }
 
-    if (team.status === "In Progress") {
+    if (uiStatus === "In Progress") {
       return (
         <button
-          onClick={() => navigate(`/judge/evaluation/${team.id}`)}
+          onClick={() => navigate(`/judge/evaluation/${teamId}`)}
           className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
         >
           Continue
@@ -75,15 +80,21 @@ export default function MyEvaluation() {
 
     return (
       <button
-        onClick={() =>
-          navigate(`/judge/evaluation/${team.id}`)
-        }
+        onClick={() => navigate(`/judge/evaluation/${teamId}`)}
         className="px-4 py-2 rounded-lg bg-violet-600 text-white hover:bg-violet-700"
       >
         Evaluate
       </button>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">Loading evaluations...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -104,7 +115,7 @@ export default function MyEvaluation() {
           <h3 className="text-gray-500 text-sm">
             Assigned Teams
           </h3>
-          <p className="text-3xl font-bold">12</p>
+          <p className="text-3xl font-bold">{assignedCount}</p>
         </div>
 
         <div className="bg-white rounded-xl border p-5">
@@ -112,7 +123,7 @@ export default function MyEvaluation() {
           <h3 className="text-gray-500 text-sm">
             Pending Evaluations
           </h3>
-          <p className="text-3xl font-bold">7</p>
+          <p className="text-3xl font-bold">{pendingCount}</p>
         </div>
 
         <div className="bg-white rounded-xl border p-5">
@@ -120,7 +131,7 @@ export default function MyEvaluation() {
           <h3 className="text-gray-500 text-sm">
             Completed
           </h3>
-          <p className="text-3xl font-bold">5</p>
+          <p className="text-3xl font-bold">{completedCount}</p>
         </div>
 
         <div className="bg-white rounded-xl border p-5">
@@ -128,7 +139,7 @@ export default function MyEvaluation() {
           <h3 className="text-gray-500 text-sm">
             Avg Time / Team
           </h3>
-          <p className="text-3xl font-bold">18m</p>
+          <p className="text-3xl font-bold">--</p>
         </div>
       </div>
 
@@ -144,6 +155,8 @@ export default function MyEvaluation() {
             type="text"
             placeholder="Search by team name..."
             className="w-full pl-10 pr-4 py-3 border rounded-lg outline-none focus:ring-2 focus:ring-violet-500"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
       </div>
@@ -162,36 +175,51 @@ export default function MyEvaluation() {
           </thead>
 
           <tbody>
-            {teams.map((team) => (
-              <tr
-                key={team.id}
-                className="border-t hover:bg-gray-50"
-              >
-                <td className="p-4 font-medium">
-                  {team.name}
-                </td>
+            {teamsData.filter((team) =>
+              team.team_name.toLowerCase().includes(searchQuery.toLowerCase())
+            ).map((team) => {
+              const uiStatus = getUIStatus(team.status);
+              
+              return (
+                <tr
+                  key={team.team_id}
+                  className="border-t hover:bg-gray-50"
+                >
+                  <td className="p-4 font-medium">
+                    {team.team_name}
+                  </td>
 
-                <td className="p-4 text-gray-600">
-                  {team.project}
-                </td>
+                  <td className="p-4 text-gray-600">
+                    {team.challenge}
+                  </td>
 
-                <td className="p-4">{team.round}</td>
+                  <td className="p-4">Round 1</td>
 
-                <td className="p-4">
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
-                      team.status
-                    )}`}
-                  >
-                    {team.status}
-                  </span>
-                </td>
+                  <td className="p-4">
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
+                        uiStatus
+                      )}`}
+                    >
+                      {uiStatus}
+                    </span>
+                  </td>
 
-                <td className="p-4">
-                  {getActionButton(team)}
+                  <td className="p-4">
+                    {getActionButton(team.team_id, uiStatus)}
+                  </td>
+                </tr>
+              );
+            })}
+            {teamsData.filter((team) =>
+              team.team_name.toLowerCase().includes(searchQuery.toLowerCase())
+            ).length === 0 && (
+              <tr>
+                <td colSpan={5} className="p-8 text-center text-gray-500">
+                  No teams found.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
