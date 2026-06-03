@@ -1,6 +1,3 @@
-// frontend/src/pages/participant/sidebar.tsx
-
-import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -19,10 +16,13 @@ const menuItems = [
 
 export default function ParticipantSidebar() {
   const location = useLocation();
-  const [activeItem, setActiveItem] = useState("Dashboard");
 
+  // ✅ FIXED: Only highlights the exact current route
   const isActive = (path: string) => {
-    return location.pathname === path || location.pathname.startsWith(path + "/");
+    if (path === "/participant") {
+      return location.pathname === "/participant";
+    }
+    return location.pathname.startsWith(path);
   };
 
   return (
@@ -30,9 +30,9 @@ export default function ParticipantSidebar() {
       {/* Logo */}
       <div className="p-6 border-b border-gray-100">
         <div className="flex items-center gap-3">
-           <div className="w-11 h-11 rounded-2xl bg-gradient-to-r from-[#7c3aed] to-[#9333ea] text-white flex items-center justify-center shadow-md text-lg">
-                ✦
-              </div>
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-r from-[#7c3aed] to-[#9333ea] text-white flex items-center justify-center shadow-md text-lg">
+            ✦
+          </div>
           <div>
             <h1 className="text-lg font-bold text-gray-900">HackFlow</h1>
             <p className="text-xs text-gray-500">Participant Portal</p>
@@ -50,7 +50,6 @@ export default function ParticipantSidebar() {
             <Link
               key={item.label}
               to={item.path}
-              onClick={() => setActiveItem(item.label)}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 active
                   ? "bg-purple-100 text-purple-700"
