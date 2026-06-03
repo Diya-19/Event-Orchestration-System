@@ -102,7 +102,7 @@ export default function App() {
         </Route>
 
         {/* DEFAULT REDIRECT */}
-        <Route path="*" element={<Navigate to="/dashboard/team-formation" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard/current-event" replace />} />
       </Routes>
     </BrowserRouter>
   );
