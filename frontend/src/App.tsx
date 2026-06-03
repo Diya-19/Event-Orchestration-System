@@ -1,7 +1,6 @@
 // frontend/src/App.tsx
 
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
-
 import LoginPage from "./pages/LoginPage";
 
 // Committee Dashboard Pages
@@ -24,11 +23,11 @@ import MyEvaluation from "./pages/Judge/Evaluation";
 import EvaluationPage from "./pages/Judge/EvaluationPage";
 
 // Participant Pages
-import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 import ParticipantSidebar from "./pages/participant/sidebar";
 import ParticipantChat from "./pages/participant/chat";
 import SubmissionPage from "./pages/participant/submission";
-import HelpPage from "./pages/participant/help";
+import HelpPage from "./pages/participant/help"; // ✅ CHANGED
+import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 
 // TEMP AUTH BYPASS
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -97,10 +96,10 @@ export default function App() {
           }
         >
           {/* ✅ UPDATED: Using ParticipantDashboard component */}
-          <Route index element={<ParticipantDashboard />} />
           <Route path="chat" element={<ParticipantChat />} />
           <Route path="submission" element={<SubmissionPage />} />
-          <Route path="support" element={<HelpPage />} />
+          <Route path="support" element={<HelpPage />} /> {/* ✅ CHANGED to HelpPage */}
+          <Route path="participantDashboard" element={<ParticipantDashboard />} />
         </Route>
 
         {/* DEFAULT REDIRECT */}
