@@ -24,10 +24,11 @@ import MyEvaluation from "./pages/Judge/Evaluation";
 import EvaluationPage from "./pages/Judge/EvaluationPage";
 
 // Participant Pages
+import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 import ParticipantSidebar from "./pages/participant/sidebar";
 import ParticipantChat from "./pages/participant/chat";
 import SubmissionPage from "./pages/participant/submission";
-import HelpPage from "./pages/participant/help"; // ✅ CHANGED
+import HelpPage from "./pages/participant/help";
 
 // TEMP AUTH BYPASS
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -95,10 +96,11 @@ export default function App() {
             </RequireAuth>
           }
         >
-          <Route index element={<div className="p-10"><h1 className="text-2xl font-bold">Participant Dashboard</h1></div>} />
+          {/* ✅ UPDATED: Using ParticipantDashboard component */}
+          <Route index element={<ParticipantDashboard />} />
           <Route path="chat" element={<ParticipantChat />} />
           <Route path="submission" element={<SubmissionPage />} />
-          <Route path="support" element={<HelpPage />} /> {/* ✅ CHANGED to HelpPage */}
+          <Route path="support" element={<HelpPage />} />
         </Route>
 
         {/* DEFAULT REDIRECT */}
