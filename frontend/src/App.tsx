@@ -83,24 +83,23 @@ export default function App() {
 
         {/* PARTICIPANT DASHBOARD */}
         <Route
-          path="/participant"
-          element={
-            <RequireAuth>
-              <div className="flex min-h-screen bg-gray-50">
-                <ParticipantSidebar />
-                <div className="flex-1 overflow-y-auto">
-                  <Outlet />
-                </div>
+        path="/participant"
+        element={
+        <RequireAuth>
+          <div className="flex min-h-screen bg-gray-50">
+            <ParticipantSidebar />
+            <div className="flex-1 overflow-y-auto">
+              <Outlet />
               </div>
-            </RequireAuth>
-          }
-        >
-          {/* ✅ UPDATED: Using ParticipantDashboard component */}
-          <Route path="chat" element={<ParticipantChat />} />
-          <Route path="submission" element={<SubmissionPage />} />
-          <Route path="support" element={<HelpPage />} /> {/* ✅ CHANGED to HelpPage */}
-          <Route path="participantDashboard" element={<ParticipantDashboard />} />
-        </Route>
+              </div>
+              </RequireAuth>
+            }
+            >
+              <Route index element={<ParticipantDashboard />} />
+              <Route path="chat" element={<ParticipantChat />} />
+              <Route path="submission" element={<SubmissionPage />} />
+              <Route path="support" element={<HelpPage />} />
+              </Route>
 
         {/* DEFAULT REDIRECT */}
         <Route path="*" element={<Navigate to="/dashboard/current-event" replace />} />

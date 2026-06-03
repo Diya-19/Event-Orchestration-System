@@ -101,7 +101,7 @@ export default function TeamChatPage() {
       <div className="h-20 bg-white border-b flex items-center justify-between px-8">
         <div>
           <div className="flex items-center gap-4">
-            <h1 className="text-4xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900">
               Team Alpha
             </h1>
 
@@ -110,7 +110,7 @@ export default function TeamChatPage() {
             </span>
           </div>
 
-          <p className="text-gray-500 mt-2">
+          <p className="text-gray-500 mt-1">
             Collaborate, discuss ideas and build something amazing! 🚀
           </p>
         </div>
@@ -378,7 +378,12 @@ export default function TeamChatPage() {
   );
 }
 
-function Action({ title, desc }) {
+interface ActionProps {
+  title: string;
+  desc: string;
+}
+
+function Action({ title, desc }: ActionProps) {
   return (
     <div className="flex gap-4">
       <div className="w-11 h-11 bg-violet-100 rounded-xl flex items-center justify-center">
