@@ -98,7 +98,6 @@ export default function TeamChatPage() {
   return (
     <div className="min-h-screen bg-[#fafafa]">
       {/* Top Header */}
-
       <div className="h-20 bg-white border-b flex items-center justify-between px-8">
         <div>
           <div className="flex items-center gap-4">
@@ -116,42 +115,18 @@ export default function TeamChatPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
-          <button className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-xl font-medium">
-            Invite Members
-          </button>
-
-          <button className="w-12 h-12 border rounded-xl flex items-center justify-center">
-            <MoreVertical size={18} />
-          </button>
-        </div>
+        {/* Removed Invite Members button - only keeping menu button */}
+        <button className="w-12 h-12 border rounded-xl flex items-center justify-center">
+          <MoreVertical size={18} />
+        </button>
       </div>
 
       <div className="px-8 pt-6">
-        {/* Tabs */}
-
-        <div className="flex gap-12 border-b mb-6">
-          {["Overview", "Chat", "Tasks", "Documents", "Settings"].map(
-            (tab) => (
-              <button
-                key={tab}
-                className={`pb-4 text-sm font-medium ${
-                  tab === "Chat"
-                    ? "border-b-2 border-violet-600 text-violet-600"
-                    : "text-gray-600"
-                }`}
-              >
-                {tab}
-              </button>
-            )
-          )}
-        </div>
+        {/* Removed Tabs Section */}
 
         {/* Main Grid */}
-
         <div className="grid grid-cols-[320px_1fr_330px] gap-6">
           {/* Left Panel */}
-
           <div className="bg-white border rounded-2xl p-5 h-fit">
             <div className="flex justify-between items-center mb-5">
               <h3 className="font-semibold text-lg">
@@ -222,7 +197,6 @@ export default function TeamChatPage() {
           </div>
 
           {/* Chat Section */}
-
           <div className="bg-white border rounded-2xl overflow-hidden flex flex-col h-[780px]">
             <div className="h-20 border-b px-6 flex items-center justify-between">
               <div>
@@ -303,7 +277,6 @@ export default function TeamChatPage() {
           </div>
 
           {/* Right Panel */}
-
           <div className="space-y-6">
             <div className="bg-white border rounded-2xl p-5">
               <h3 className="font-semibold text-lg mb-5">

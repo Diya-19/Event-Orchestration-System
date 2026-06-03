@@ -27,7 +27,7 @@ import EvaluationPage from "./pages/Judge/EvaluationPage";
 import ParticipantSidebar from "./pages/participant/sidebar";
 import ParticipantChat from "./pages/participant/chat";
 import SubmissionPage from "./pages/participant/submission";
-import HelpPage from "./pages/participant/help"; // ✅ CHANGED
+import HelpPage from "./pages/participant/help"; // 
 
 // TEMP AUTH BYPASS
 function RequireAuth({ children }: { children: JSX.Element }) {
