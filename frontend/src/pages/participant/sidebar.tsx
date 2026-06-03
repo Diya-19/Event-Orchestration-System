@@ -30,9 +30,9 @@ export default function ParticipantSidebar() {
       {/* Logo */}
       <div className="p-6 border-b border-gray-100">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center">
-            <span className="text-white font-bold text-lg">{"<>"}</span>
-          </div>
+           <div className="w-11 h-11 rounded-2xl bg-gradient-to-r from-[#7c3aed] to-[#9333ea] text-white flex items-center justify-center shadow-md text-lg">
+                ✦
+              </div>
           <div>
             <h1 className="text-lg font-bold text-gray-900">HackFlow</h1>
             <p className="text-xs text-gray-500">Participant Portal</p>
