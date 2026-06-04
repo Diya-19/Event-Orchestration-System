@@ -30,7 +30,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { clearJudgeToken } from '../../lib/auth';
 import { getActivities, logActivity, mergeApiActivities, formatRelativeTime, ActivityItem } from '../../lib/activityLogger';
 import { getUpcomingDeadlines, getRemainingTime, Deadline } from '../../lib/deadlineService';
-import { getAssignedTeams, mergeAssignmentStatus } from '../../lib/teamAssignmentService';
+import { getAssignedTeams, mergeAssignmentStatus, calculateEvaluationMetrics } from '../../lib/teamAssignmentService';
 
 const TeamListModal = ({ isOpen, onClose, title, teams, onTeamClick, type, navigate }: any) => {
   if (!isOpen) return null;
@@ -456,12 +456,8 @@ export default function Dashboard() {
   const assignments = getAssignedTeams();
   const mergedTeams = mergeAssignmentStatus(assignments, evaluationsList);
 
-  const draftsCount = mergedTeams.filter((e: any) => e.status === "draft").length;
-  
   // Single source of truth for counts
-  const totalAssigned = mergedTeams.length;
-  const completedCount = mergedTeams.filter((e: any) => e.status === "submitted").length;
-  const pendingCount = totalAssigned - completedCount;
+  const { assignedCount: totalAssigned, completedCount, draftCount: draftsCount, pendingCount } = calculateEvaluationMetrics(mergedTeams);
   const progressPercent = totalAssigned > 0 ? Math.round((completedCount / totalAssigned) * 100) : 0;
 
   const topStats = [

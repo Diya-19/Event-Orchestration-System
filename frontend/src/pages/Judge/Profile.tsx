@@ -77,6 +77,13 @@ export default function JudgeProfile() {
     reader.readAsDataURL(file);
   };
 
+  const handleAvatarRemove = () => {
+    const updatedProfile = { ...profileData, avatar: "" };
+    setProfileData(updatedProfile);
+    setEditForm(prev => ({ ...prev, avatar: "" }));
+    saveProfileAvatar("");
+  };
+
   const handleCancelEdit = () => {
     setEditForm(profileData);
     setNewSkill("");
@@ -176,7 +183,7 @@ export default function JudgeProfile() {
           <div className="flex flex-col md:flex-row gap-8 items-start">
             
             {/* Avatar Section */}
-            <div className="relative group shrink-0">
+            <div className="relative group shrink-0 flex flex-col items-center">
               <input 
                 type="file" 
                 ref={fileInputRef} 
@@ -184,23 +191,33 @@ export default function JudgeProfile() {
                 accept="image/jpeg, image/png, image/webp" 
                 onChange={handleAvatarUpload} 
               />
-              <div 
-                className={`w-28 h-28 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 text-3xl font-bold overflow-hidden border-4 border-white shadow-md ${isEditing ? 'cursor-pointer' : ''}`}
-                onClick={() => isEditing && fileInputRef.current?.click()}
-              >
-                {profileData.avatar ? (
-                  <img src={profileData.avatar} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  profileData.name !== "Not Available" ? profileData.name.split(' ').map((n: string) => n[0]).join('').substring(0,2).toUpperCase() : "NA"
+              <div className="relative">
+                <div 
+                  className={`w-28 h-28 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 text-3xl font-bold overflow-hidden border-4 border-white shadow-md ${isEditing ? 'cursor-pointer' : ''}`}
+                  onClick={() => isEditing && fileInputRef.current?.click()}
+                >
+                  {profileData.avatar ? (
+                    <img src={profileData.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    profileData.name !== "Not Available" ? profileData.name.split(' ').map((n: string) => n[0]).join('').substring(0,2).toUpperCase() : "NA"
+                  )}
+                </div>
+                {isEditing && (
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute bottom-0 right-0 bg-purple-600 text-white p-2 rounded-full shadow-md hover:bg-purple-700 transition-colors cursor-pointer"
+                    title="Change Photo"
+                  >
+                    <Camera className="w-4 h-4" />
+                  </button>
                 )}
               </div>
-              {isEditing && (
+              {isEditing && profileData.avatar && (
                 <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 bg-purple-600 text-white p-2 rounded-full shadow-md hover:bg-purple-700 transition-colors cursor-pointer"
-                  title="Change Photo"
+                  onClick={handleAvatarRemove} 
+                  className="mt-3 text-xs font-semibold text-slate-500 hover:text-red-500 transition-colors"
                 >
-                  <Camera className="w-4 h-4" />
+                  Remove Photo
                 </button>
               )}
             </div>

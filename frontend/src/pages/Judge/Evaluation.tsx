@@ -7,6 +7,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { api } from "../../lib/api";
+import { getAssignedTeams, mergeAssignmentStatus, calculateEvaluationMetrics } from "../../lib/teamAssignmentService";
 
 export default function MyEvaluation() {
   const navigate = useNavigate();
@@ -29,18 +30,21 @@ export default function MyEvaluation() {
     fetchEvaluations();
   }, []);
 
-  const assignedCount = teamsData.length;
-  const pendingCount = teamsData.filter(t => t.status === "Not Started" || t.status === "Pending").length;
-  const completedCount = teamsData.filter(t => t.status === "Completed" || t.status === "Submitted").length;
-  const draftCount = teamsData.filter(t => t.status === "Draft" || t.status === "In Progress").length;
+  const mergedTeams = mergeAssignmentStatus(getAssignedTeams(), teamsData);
+  const { assignedCount, completedCount, draftCount, pendingCount } = calculateEvaluationMetrics(mergedTeams);
 
   const getUIStatus = (backendStatus: string) => {
     switch (backendStatus) {
       case "Submitted":
+      case "submitted":
         return "Completed";
       case "Draft":
+      case "draft":
+      case "In Progress":
+      case "in_progress":
         return "In Progress";
       case "Not Started":
+      case "not_started":
       default:
         return "Pending";
     }
@@ -98,8 +102,8 @@ export default function MyEvaluation() {
     );
   }
 
-  const filteredTeams = teamsData.filter(team => {
-    const matchesSearch = team.team_name.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredTeams = mergedTeams.filter(team => {
+    const matchesSearch = team.teamName.toLowerCase().includes(searchQuery.toLowerCase());
     
     const uiStatus = getUIStatus(team.status);
     let matchesFilter = true;
@@ -208,7 +212,7 @@ export default function MyEvaluation() {
       {/* Result Count */}
       <div className="mb-3">
         <p className="text-sm font-medium text-gray-600">
-          Showing {filteredTeams.length} of {teamsData.length} teams
+          Showing {filteredTeams.length} of {mergedTeams.length} teams
         </p>
       </div>
 
@@ -231,15 +235,15 @@ export default function MyEvaluation() {
               
               return (
                 <tr
-                  key={team.team_id}
+                  key={team.teamId}
                   className="border-t hover:bg-gray-50"
                 >
                   <td className="p-4 font-medium">
-                    {team.team_name}
+                    {team.teamName}
                   </td>
 
                   <td className="p-4 text-gray-600">
-                    {team.challenge}
+                    {team.trackName}
                   </td>
 
                   <td className="p-4">Round 1</td>
@@ -255,7 +259,7 @@ export default function MyEvaluation() {
                   </td>
 
                   <td className="p-4">
-                    {getActionButton(team.team_id, uiStatus)}
+                    {getActionButton(team.teamId, uiStatus)}
                   </td>
                 </tr>
               );

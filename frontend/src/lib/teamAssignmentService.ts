@@ -95,3 +95,12 @@ export const mergeAssignmentStatus = (assignments: AssignedTeam[], evaluations: 
 
   return merged;
 };
+
+export const calculateEvaluationMetrics = (mergedTeams: any[]) => {
+  const assignedCount = mergedTeams.length;
+  const completedCount = mergedTeams.filter((t: any) => t.status === "submitted").length;
+  const draftCount = mergedTeams.filter((t: any) => t.status === "draft" || t.status === "in_progress").length;
+  const pendingCount = assignedCount - completedCount - draftCount;
+
+  return { assignedCount, completedCount, draftCount, pendingCount };
+};
