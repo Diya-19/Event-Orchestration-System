@@ -21,6 +21,8 @@ import JudgeSidebar from "./pages/Judge/sidebar";
 import JudgeDashboard from "./pages/Judge/dashboard";
 import MyEvaluation from "./pages/Judge/Evaluation";
 import EvaluationPage from "./pages/Judge/EvaluationPage";
+import JudgeDeadlines from "./pages/Judge/Deadlines";
+import JudgeProfile from "./pages/Judge/Profile";
 
 // Participant Pages
 import ParticipantSidebar from "./pages/participant/sidebar";
@@ -31,6 +33,25 @@ import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 
 // TEMP AUTH BYPASS
 function RequireAuth({ children }: { children: JSX.Element }) {
+  return children;
+}
+
+// JUDGE AUTH (With DEV_MODE Support)
+function RequireJudgeAuth({ children }: { children: JSX.Element }) {
+  const isDev = import.meta.env.VITE_DEV_MODE === "true";
+  console.log("DEV MODE =", import.meta.env.VITE_DEV_MODE, "isDev =", isDev);
+  
+  if (isDev) {
+    return children;
+  }
+  
+  const token = localStorage.getItem("evaluator_token");
+  if (!token) {
+    // If no token exists, they shouldn't access the judge pages. 
+    // Redirecting to login as fallback, or show unauthorized.
+    return <Navigate to="/login" replace />; 
+  }
+  
   return children;
 }
 
@@ -66,19 +87,21 @@ export default function App() {
         <Route
           path="/judge"
           element={
-            <RequireAuth>
+            <RequireJudgeAuth>
               <div className="flex min-h-screen bg-gray-50">
                 <JudgeSidebar />
                 <div className="flex-1 overflow-y-auto">
                   <Outlet />
                 </div>
               </div>
-            </RequireAuth>
+            </RequireJudgeAuth>
           }
         >
           <Route index element={<JudgeDashboard />} />
           <Route path="evaluations" element={<MyEvaluation />} />
           <Route path="evaluation/:teamId" element={<EvaluationPage />} />
+          <Route path="deadlines" element={<JudgeDeadlines />} />
+          <Route path="profile" element={<JudgeProfile />} />
         </Route>
 
         {/* PARTICIPANT DASHBOARD */}
