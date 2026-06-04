@@ -1,7 +1,9 @@
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, Link, Globe } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { api } from "../../lib/api";
+import { logActivity } from "../../lib/activityLogger";
+import { getSubmissionByTeamId, ProjectSubmission } from "../../lib/submissionService";
 
 export default function EvaluationPage() {
   const navigate = useNavigate();
@@ -13,7 +15,7 @@ export default function EvaluationPage() {
   const [scores, setScores] = useState<any>({});
   const [comments, setComments] = useState("");
   const [status, setStatus] = useState("");
-  const [deliverables, setDeliverables] = useState<any[]>([]);
+  const [submission, setSubmission] = useState<ProjectSubmission | null>(null);
 
   useEffect(() => {
     const fetchTeamDetail = async () => {
@@ -24,12 +26,16 @@ export default function EvaluationPage() {
         setScores(data.evaluation?.scores || {});
         setComments(data.evaluation?.comments || "");
         setStatus(data.status);
-        setDeliverables(data.deliverables || []);
       } catch (err) {
         console.error("Failed to fetch team evaluation details", err);
-      } finally {
-        setLoading(false);
       }
+      
+      if (teamId) {
+        const sub = getSubmissionByTeamId(teamId);
+        setSubmission(sub);
+      }
+      
+      setLoading(false);
     };
     if (teamId) fetchTeamDetail();
   }, [teamId]);
@@ -49,12 +55,29 @@ export default function EvaluationPage() {
       });
       alert("Draft saved successfully!");
       setStatus("Draft");
+      if (teamId) {
+        logActivity('Draft Saved', team.name, teamId);
+      }
     } catch (err: any) {
       alert(err.response?.data?.detail || "Failed to save draft");
     }
   };
 
   const handleSubmit = async () => {
+    // Validation
+    if (Object.keys(rubric).length > 0) {
+      for (const key of Object.keys(rubric)) {
+        if (scores[key] === undefined || scores[key] === "") {
+          alert(`Please provide a score for ${key.replace(/_/g, " ")} before submitting.`);
+          return;
+        }
+        if (scores[key] < 0 || scores[key] > 10) {
+          alert(`Score for ${key.replace(/_/g, " ")} must be between 0 and 10.`);
+          return;
+        }
+      }
+    }
+
     if (!window.confirm("Are you sure you want to submit? This action cannot be undone.")) return;
     try {
       await api.post(`/api/judge/evaluations/${teamId}/submit`, {
@@ -63,6 +86,9 @@ export default function EvaluationPage() {
       });
       alert("Evaluation submitted successfully!");
       setStatus("Submitted");
+      if (teamId) {
+        logActivity('Evaluation Submitted', team.name, teamId);
+      }
     } catch (err: any) {
       alert(err.response?.data?.detail || "Failed to submit evaluation");
     }
@@ -74,7 +100,7 @@ export default function EvaluationPage() {
   let total = 0;
   if (Object.keys(rubric).length > 0) {
     for (const [key, weight] of Object.entries(rubric)) {
-      total += (scores[key] || 0) * Number(weight);
+      total += (scores[key] || 0) * (Number(weight) / 100);
     }
   } else {
     const scoreVals = Object.values(scores) as number[];
@@ -132,10 +158,52 @@ export default function EvaluationPage() {
               Project Summary
             </h2>
 
-            <p className="text-gray-600 leading-relaxed">
-              {team.challenge || "No project summary provided."}
-            </p>
+            {submission ? (
+              <div className="space-y-4">
+                <p className="text-gray-800 font-medium">
+                  {submission.projectName}
+                </p>
+                <p className="text-gray-600 leading-relaxed">
+                  {submission.summary}
+                </p>
+                {submission.description && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Description</h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">
+                      {submission.description}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-gray-500 leading-relaxed italic">
+                This team has not provided a project summary yet.
+              </p>
+            )}
           </div>
+
+          {/* Links & Resources */}
+          {submission && (submission.githubUrl || submission.demoUrl) && (
+            <div className="bg-white rounded-xl border p-6">
+              <h2 className="text-xl font-semibold mb-4">
+                Project Links
+              </h2>
+              <div className="flex flex-col gap-3">
+                {submission.githubUrl && (
+                  <a href={submission.githubUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 w-full border rounded-lg p-3 hover:bg-gray-50 text-blue-600 transition-colors">
+                    <Link size={18} />
+                    View GitHub Repository
+                  </a>
+                )}
+                {submission.demoUrl && (
+                  <a href={submission.demoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 w-full border rounded-lg p-3 hover:bg-gray-50 text-emerald-600 transition-colors">
+                    <Globe size={18} />
+                    View Live Demo
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Deliverables */}
           <div className="bg-white rounded-xl border p-6">
@@ -144,14 +212,14 @@ export default function EvaluationPage() {
             </h2>
 
             <div className="space-y-3">
-              {deliverables.length === 0 ? (
-                <p className="text-gray-500">No deliverables uploaded.</p>
+              {!submission || submission.deliverables.length === 0 ? (
+                <p className="text-gray-500 italic">No deliverables have been submitted.</p>
               ) : (
-                deliverables.map((d: any, i: number) => (
-                  <button key={i} className="flex items-center gap-3 w-full border rounded-lg p-3 hover:bg-gray-50">
+                submission.deliverables.map((d) => (
+                  <a href={d.url} target="_blank" rel="noreferrer" key={d.id} className="flex items-center gap-3 w-full border rounded-lg p-3 hover:bg-gray-50 transition-colors text-gray-700">
                     <Download size={18} />
-                    {d.name || "Deliverable"}
-                  </button>
+                    {d.title}
+                  </a>
                 ))
               )}
             </div>
@@ -191,7 +259,7 @@ export default function EvaluationPage() {
                       <td className="py-4 capitalize">
                         {criteria.replace(/_/g, " ")}
                       </td>
-                      <td>{Number(weight) * 100}%</td>
+                      <td>{Number(weight)}%</td>
                       <td>
                         <select
                           className="border rounded-lg px-3 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -267,7 +335,7 @@ export default function EvaluationPage() {
                 Object.entries(rubric).map(([criteria, weight]: [string, any]) => (
                   <div key={criteria} className="flex justify-between">
                     <span className="capitalize">{criteria.replace(/_/g, " ")}</span>
-                    <span>{Number(weight) * 100}%</span>
+                    <span>{Number(weight)}%</span>
                   </div>
                 ))
               )}

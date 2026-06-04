@@ -13,6 +13,7 @@ export default function MyEvaluation() {
   const [teamsData, setTeamsData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState("All Teams");
 
   useEffect(() => {
     const fetchEvaluations = async () => {
@@ -29,8 +30,9 @@ export default function MyEvaluation() {
   }, []);
 
   const assignedCount = teamsData.length;
-  const pendingCount = teamsData.filter(t => t.status === "Pending").length;
-  const completedCount = teamsData.filter(t => t.status === "Completed").length;
+  const pendingCount = teamsData.filter(t => t.status === "Not Started" || t.status === "Pending").length;
+  const completedCount = teamsData.filter(t => t.status === "Completed" || t.status === "Submitted").length;
+  const draftCount = teamsData.filter(t => t.status === "Draft" || t.status === "In Progress").length;
 
   const getUIStatus = (backendStatus: string) => {
     switch (backendStatus) {
@@ -96,6 +98,20 @@ export default function MyEvaluation() {
     );
   }
 
+  const filteredTeams = teamsData.filter(team => {
+    const matchesSearch = team.team_name.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const uiStatus = getUIStatus(team.status);
+    let matchesFilter = true;
+    if (activeFilter === "Completed") matchesFilter = (uiStatus === "Completed");
+    else if (activeFilter === "Draft / In Progress") matchesFilter = (uiStatus === "In Progress");
+    else if (activeFilter === "Pending Evaluation") matchesFilter = (uiStatus === "Pending");
+    
+    return matchesSearch && matchesFilter;
+  });
+
+  const filterOptions = ["All Teams", "Pending Evaluation", "Completed", "Draft / In Progress"];
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
@@ -110,7 +126,10 @@ export default function MyEvaluation() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-6">
-        <div className="bg-white rounded-xl border p-5">
+        <div 
+          className="bg-white rounded-xl border p-5 cursor-pointer hover:border-violet-300 transition-colors"
+          onClick={() => setActiveFilter("All Teams")}
+        >
           <Users className="text-violet-600 mb-3" />
           <h3 className="text-gray-500 text-sm">
             Assigned Teams
@@ -118,7 +137,10 @@ export default function MyEvaluation() {
           <p className="text-3xl font-bold">{assignedCount}</p>
         </div>
 
-        <div className="bg-white rounded-xl border p-5">
+        <div 
+          className="bg-white rounded-xl border p-5 cursor-pointer hover:border-orange-300 transition-colors"
+          onClick={() => setActiveFilter("Pending Evaluation")}
+        >
           <Clock className="text-orange-500 mb-3" />
           <h3 className="text-gray-500 text-sm">
             Pending Evaluations
@@ -126,7 +148,10 @@ export default function MyEvaluation() {
           <p className="text-3xl font-bold">{pendingCount}</p>
         </div>
 
-        <div className="bg-white rounded-xl border p-5">
+        <div 
+          className="bg-white rounded-xl border p-5 cursor-pointer hover:border-green-300 transition-colors"
+          onClick={() => setActiveFilter("Completed")}
+        >
           <CheckCircle className="text-green-600 mb-3" />
           <h3 className="text-gray-500 text-sm">
             Completed
@@ -134,18 +159,21 @@ export default function MyEvaluation() {
           <p className="text-3xl font-bold">{completedCount}</p>
         </div>
 
-        <div className="bg-white rounded-xl border p-5">
+        <div 
+          className="bg-white rounded-xl border p-5 cursor-pointer hover:border-blue-300 transition-colors"
+          onClick={() => setActiveFilter("Draft / In Progress")}
+        >
           <Clock className="text-blue-600 mb-3" />
           <h3 className="text-gray-500 text-sm">
-            Avg Time / Team
+            Draft / In Progress
           </h3>
-          <p className="text-3xl font-bold">--</p>
+          <p className="text-3xl font-bold">{draftCount}</p>
         </div>
       </div>
 
-      {/* Search */}
+      {/* Search & Filters */}
       <div className="bg-white rounded-xl border p-4 mb-6">
-        <div className="relative">
+        <div className="relative mb-4">
           <Search
             className="absolute left-3 top-3 text-gray-400"
             size={18}
@@ -159,6 +187,29 @@ export default function MyEvaluation() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
+
+        <div className="flex flex-wrap gap-2">
+          {filterOptions.map(option => (
+            <button
+              key={option}
+              onClick={() => setActiveFilter(option)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                activeFilter === option
+                  ? "bg-violet-600 text-white border border-violet-600"
+                  : "bg-white text-gray-600 border border-gray-200 hover:border-violet-300 hover:bg-violet-50"
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Result Count */}
+      <div className="mb-3">
+        <p className="text-sm font-medium text-gray-600">
+          Showing {filteredTeams.length} of {teamsData.length} teams
+        </p>
       </div>
 
       {/* Table */}
@@ -175,9 +226,7 @@ export default function MyEvaluation() {
           </thead>
 
           <tbody>
-            {teamsData.filter((team) =>
-              team.team_name.toLowerCase().includes(searchQuery.toLowerCase())
-            ).map((team) => {
+            {filteredTeams.map((team) => {
               const uiStatus = getUIStatus(team.status);
               
               return (
@@ -211,12 +260,10 @@ export default function MyEvaluation() {
                 </tr>
               );
             })}
-            {teamsData.filter((team) =>
-              team.team_name.toLowerCase().includes(searchQuery.toLowerCase())
-            ).length === 0 && (
+            {filteredTeams.length === 0 && (
               <tr>
                 <td colSpan={5} className="p-8 text-center text-gray-500">
-                  No teams found.
+                  No evaluations match your search/filter.
                 </td>
               </tr>
             )}

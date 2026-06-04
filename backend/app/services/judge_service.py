@@ -4,6 +4,8 @@ from app.models.team import Team
 from app.models.evaluation import Evaluation
 from app.models.activity_log import ActivityLog
 from app.models.event import Event
+from app.models.team_member import TeamMember
+from app.models.participant import Participant
 from typing import Dict, Any
 from datetime import datetime
 from fastapi import HTTPException
@@ -34,15 +36,22 @@ def get_dashboard_stats(db: Session, evaluator: dict) -> Dict[str, Any]:
     # 5. Recent Activity
     activities = db.query(ActivityLog).filter(
         ActivityLog.actor == f"evaluator:{evaluator_id}"
-    ).order_by(ActivityLog.created_at.desc()).limit(5).all()
+    ).order_by(ActivityLog.created_at.desc()).all()
 
     formatted_activities = []
     for activity in activities:
-        # We try to mimic the UI structure
+        details = activity.details or {}
+        time_str = activity.created_at.strftime("%Y-%m-%d %H:%M:%S") if activity.created_at else "Unknown"
+        
         formatted_activities.append({
+            "team_id": details.get("team_id", ""),
+            "team_name": details.get("team_name", "System"),
+            "activity": activity.action,
+            "timestamp": time_str,
+            # Backward compatibility fields
             "title": activity.action,
-            "subtitle": activity.details.get("subtitle", "") if activity.details else "",
-            "time": activity.created_at.strftime("%Y-%m-%d %H:%M:%S") if activity.created_at else "Unknown"
+            "subtitle": details.get("subtitle", ""),
+            "time": time_str
         })
 
     # Average Time and Deadlines cannot be computed strictly from current schema
@@ -79,6 +88,32 @@ def get_dashboard_stats(db: Session, evaluator: dict) -> Dict[str, Any]:
         
     upcoming_deadlines = upcoming_deadlines[:3]
 
+    # Process all deadlines (no truncation, preserve raw timestamp)
+    processed_all_deadlines = []
+    for d in all_deadlines:
+        try:
+            ts_str = d.get("timestamp", "")
+            if ts_str.endswith("Z"):
+                ts_str = ts_str[:-1] + "+00:00"
+            dt = datetime.fromisoformat(ts_str)
+            dt_naive = dt.replace(tzinfo=None) if dt.tzinfo else dt
+            formatted_date = dt.strftime("%B %d, %Y - %I:%M %p")
+            
+            processed_all_deadlines.append({
+                "title": d.get("title", "Deadline"),
+                "timestamp": ts_str,
+                "date": formatted_date,
+                "tag": d.get("tag", "Upcoming"),
+                "color": d.get("color", "bg-orange-50 text-orange-700"),
+                "_ts": dt_naive
+            })
+        except Exception:
+            continue
+            
+    processed_all_deadlines.sort(key=lambda x: x["_ts"])
+    for d in processed_all_deadlines:
+        del d["_ts"]
+
     return {
         "assigned_teams": assigned_teams,
         "completed_evaluations": completed_evaluations,
@@ -86,7 +121,8 @@ def get_dashboard_stats(db: Session, evaluator: dict) -> Dict[str, Any]:
         "average_time_per_team": average_time_per_team,
         "progress_percentage": progress_percentage,
         "recent_activity": formatted_activities,
-        "upcoming_deadlines": upcoming_deadlines
+        "upcoming_deadlines": upcoming_deadlines,
+        "all_deadlines": processed_all_deadlines
     }
 
 def get_evaluations_list(db: Session, evaluator: dict):
@@ -118,7 +154,8 @@ def get_evaluations_list(db: Session, evaluator: dict):
             "team_name": t.name,
             "challenge": t.challenge or "",
             "status": status,
-            "overall_score": float(e.overall) if e and e.overall else None
+            "overall_score": float(e.overall) if e and e.overall else None,
+            "submitted_at": e.submitted_at.isoformat() if e and e.submitted_at else None
         })
         
     return result
@@ -148,11 +185,26 @@ def get_evaluation_detail(db: Session, evaluator: dict, team_id: str):
         status_str = "Submitted"
         eval_data = {"scores": evaluation.scores, "comments": evaluation.comments or "", "overall": float(evaluation.overall) if evaluation.overall else 0}
         
+    members = db.query(TeamMember, Participant).join(
+        Participant, TeamMember.participant_id == Participant.id
+    ).filter(TeamMember.team_id == team_id).all()
+    
+    participants_data = []
+    for tm, p in members:
+        participants_data.append({
+            "name": p.name,
+            "email": p.email,
+            "institution": p.institution,
+            "skills": p.skills or [],
+            "role": tm.role
+        })
+
     return {
         "team": {
             "id": str(team.id),
             "name": team.name,
-            "challenge": team.challenge or ""
+            "challenge": team.challenge or "",
+            "participants": participants_data
         },
         "evaluation": eval_data,
         "status": status_str,
@@ -211,9 +263,17 @@ def submit_evaluation(db: Session, evaluator: dict, team_id: str, payload: dict)
     overall = 0.0
     if rubric:
         for k, v in rubric.items():
-            weight = float(v)
-            score = float(scores.get(k, 0))
-            overall += score * weight
+            if k not in scores:
+                raise HTTPException(status_code=400, detail=f"Missing score for criterion: {k.replace('_', ' ')}")
+            try:
+                score_val = float(scores[k])
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid score for criterion: {k.replace('_', ' ')}")
+            if not (0 <= score_val <= 10):
+                raise HTTPException(status_code=400, detail=f"Score for {k.replace('_', ' ')} must be between 0 and 10")
+                
+            weight = float(v) / 100.0
+            overall += score_val * weight
     else:
         if scores:
             overall = sum([float(s) for s in scores.values()]) / len(scores)
