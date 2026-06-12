@@ -1,5 +1,5 @@
-import React, { useState, FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, FormEvent, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Users,
   Shield,
@@ -15,36 +15,39 @@ interface AuthResponse {
   token_type: string;
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
+import { api } from "../lib/api";
 
 async function apiLogin(email: string, password: string): Promise<AuthResponse> {
-  const res = await fetch(`${API_BASE}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? "Login failed");
+  try {
+    const res = await api.post("/api/auth/login", { email, password });
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.detail ?? "Login failed");
   }
-  return res.json();
+}
+
+async function apiParticipantLogin(email: string, password: string): Promise<AuthResponse> {
+  try {
+    const res = await api.post("/api/auth/participant-login", { email, password });
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.detail ?? "Login failed");
+  }
 }
 
 async function apiSignup(name: string, email: string, password: string): Promise<AuthResponse> {
-  const res = await fetch(`${API_BASE}/api/auth/signup`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? "Signup failed");
+  try {
+    const res = await api.post("/api/auth/signup", { name, email, password });
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.detail ?? "Signup failed");
   }
-  return res.json();
 }
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tokenParam = searchParams.get("token");
   
   // UI State
   const [mode, setMode] = useState<Mode>("login");
@@ -57,6 +60,27 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Auto-verify judge invitation links
+  useEffect(() => {
+    if (tokenParam) {
+      const verifyToken = async () => {
+        setLoading(true);
+        try {
+          const res = await api.get(`/api/auth/verify-judge?token=${tokenParam}`);
+          const data = res.data;
+          localStorage.setItem("evaluator_token", data.access_token);
+          navigate("/judge");
+        } catch (err: any) {
+          setError(err.response?.data?.detail ?? "Invalid or expired invitation link");
+          setRole("Judge"); // Visually set them to Judge role for context
+        } finally {
+          setLoading(false);
+        }
+      };
+      verifyToken();
+    }
+  }, [tokenParam, navigate, searchParams, setSearchParams]);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
@@ -65,7 +89,11 @@ export default function LoginPage() {
     try {
       let data: AuthResponse;
       if (mode === "login") {
-        data = await apiLogin(email, password);
+        if (role === "Participant") {
+          data = await apiParticipantLogin(email, password);
+        } else {
+          data = await apiLogin(email, password);
+        }
       } else {
         if (!name.trim()) {
           setError("Name is required");
@@ -75,15 +103,57 @@ export default function LoginPage() {
         data = await apiSignup(name.trim(), email, password);
       }
       
+      
       // Store token and redirect
-      localStorage.setItem("committee_token", data.access_token);
-      navigate("/dashboard");
+      if (role === "Participant") {
+        localStorage.setItem("participant_token", data.access_token);
+        navigate("/participant");
+      } else {
+        localStorage.setItem("committee_token", data.access_token);
+        navigate("/dashboard");
+      }
       
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
+  }
+
+  // --- Dedicated Invitation Verification Screen ---
+  if (tokenParam) {
+    return (
+      <div className="min-h-screen bg-[#F7F7FB] flex items-center justify-center p-4">
+        <div className="bg-white rounded-[34px] shadow-xl p-10 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-600 mx-auto mb-6">
+            <Shield size={32} />
+          </div>
+          <h2 className="text-3xl font-bold mb-3">Judge Invitation</h2>
+          
+          {!error ? (
+            <div className="space-y-4">
+              <p className="text-gray-500">Verifying invitation securely...</p>
+              <div className="w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mt-4"></div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <p className="text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                {error}
+              </p>
+              <button 
+                onClick={() => {
+                  searchParams.delete("token");
+                  setSearchParams(searchParams);
+                }}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-xl p-4 font-semibold transition-colors"
+              >
+                Return to Login
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (

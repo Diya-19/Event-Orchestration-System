@@ -23,6 +23,7 @@ from app.models.approval import ApprovalRequest
 from app.models.communication import Communication, CommunicationLog
 
 from app.models.activity_log import ActivityLog
+from app.models.submission import Submission
 
 __all__ = [
 
@@ -31,9 +32,6 @@ __all__ = [
     "Event",
 
     "Participant",
-
-    "DistributionRules",
-
     "Team",
 
     "TeamMember",
@@ -49,7 +47,6 @@ __all__ = [
     "Communication",
 
     "CommunicationLog",
-
     "ActivityLog",
-
+    "Submission",
 ]
