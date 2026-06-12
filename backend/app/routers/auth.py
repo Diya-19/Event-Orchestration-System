@@ -7,6 +7,7 @@ from passlib.context import CryptContext
 from app.db import get_db
 from app.models.committee_user import CommitteeUser
 from app.models.evaluator import Evaluator
+from app.models.participant import Participant
 from app.services.token_service import create_access_token, verify_token
 
 from app.auth import require_committee
@@ -85,4 +86,19 @@ def verify_judge(token: str, db: Session = Depends(get_db)):
             detail="Invalid or expired invitation link",
         )
     # Return the raw token exactly as expected by the require_evaluator dependency
+    return TokenResponse(access_token=token)
+
+@router.post("/participant-login", response_model=TokenResponse)
+def participant_login(body: LoginRequest, db: Session = Depends(get_db)):
+    participant = db.query(Participant).filter(Participant.email == body.email).first()
+    if not participant or participant.portal_token != body.password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+        )
+    token = create_access_token({
+        "sub": f"participant:{participant.id}",
+        "email": participant.email,
+        "role": "participant"
+    })
     return TokenResponse(access_token=token)

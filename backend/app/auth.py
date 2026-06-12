@@ -6,6 +6,7 @@ from app.db import get_db
 from app.services.token_service import verify_token
 from app.models.committee_user import CommitteeUser
 from app.models.evaluator import Evaluator
+from app.models.participant import Participant
 from app.config import settings
 
 _bearer = HTTPBearer()
@@ -82,4 +83,21 @@ def require_evaluator(
         "email": evaluator.email,
         "event_id": str(evaluator.event_id)
     }
+
+def require_participant(
+    creds: HTTPAuthorizationCredentials = Depends(_bearer),
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    FastAPI dependency for participant-authenticated routes.
+    """
+    payload = verify_token(creds.credentials)
+    sub: str = payload.get("sub", "")
+    if not sub.startswith("participant:"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a participant token")
+    participant_id = sub.split(":", 1)[1]
+    participant = db.get(Participant, participant_id)
+    if not participant:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Participant not found")
+    return {"sub": sub, "participant_id": participant_id, "email": participant.email}
 

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getToken, clearToken, clearJudgeToken, getJudgeToken } from "./auth";
+import { getToken, clearToken, clearJudgeToken, getJudgeToken, getParticipantToken, clearParticipantToken } from "./auth";
 
 export const api = axios.create({
   baseURL: "",
@@ -9,6 +9,9 @@ api.interceptors.request.use((config) => {
   // If the request is for the judge portal, use the judge token
   if (config.url?.startsWith("/api/judge")) {
     const token = getJudgeToken();
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  } else if (config.url?.startsWith("/api/participant")) {
+    const token = getParticipantToken();
     if (token) config.headers.Authorization = `Bearer ${token}`;
   } else {
     // Otherwise use the committee token
@@ -31,6 +34,8 @@ api.interceptors.response.use(
 
       if (err.config?.url?.startsWith("/api/judge")) {
         clearJudgeToken();
+      } else if (err.config?.url?.startsWith("/api/participant")) {
+        clearParticipantToken();
       } else {
         clearToken();
       }

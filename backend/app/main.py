@@ -45,7 +45,8 @@ app.include_router(teams.router, prefix="/api/events/{event_id}/teams", tags=["t
 app.include_router(rules.router, prefix="/api/events", tags=["rules"])
 
 # Public/Portal API
-# app.include_router(portal_participant.router, prefix="/api/portal/participant", tags=["Portal - Participant"])
+from app.routers.portal import participant as portal_participant
+app.include_router(portal_participant.router, prefix="/api/participant", tags=["Portal - Participant"])
 # app.include_router(portal_evaluator.router, prefix="/api/portal/evaluator", tags=["Portal - Evaluator"])
 from app.routers.portal import judge as portal_judge
 app.include_router(portal_judge.router, prefix="/api/judge", tags=["Judge Portal"])

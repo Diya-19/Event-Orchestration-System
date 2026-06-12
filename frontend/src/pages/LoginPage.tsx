@@ -26,6 +26,15 @@ async function apiLogin(email: string, password: string): Promise<AuthResponse> 
   }
 }
 
+async function apiParticipantLogin(email: string, password: string): Promise<AuthResponse> {
+  try {
+    const res = await api.post("/api/auth/participant-login", { email, password });
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.detail ?? "Login failed");
+  }
+}
+
 async function apiSignup(name: string, email: string, password: string): Promise<AuthResponse> {
   try {
     const res = await api.post("/api/auth/signup", { name, email, password });
@@ -80,7 +89,11 @@ export default function LoginPage() {
     try {
       let data: AuthResponse;
       if (mode === "login") {
-        data = await apiLogin(email, password);
+        if (role === "Participant") {
+          data = await apiParticipantLogin(email, password);
+        } else {
+          data = await apiLogin(email, password);
+        }
       } else {
         if (!name.trim()) {
           setError("Name is required");
@@ -90,9 +103,15 @@ export default function LoginPage() {
         data = await apiSignup(name.trim(), email, password);
       }
       
+      
       // Store token and redirect
-      localStorage.setItem("committee_token", data.access_token);
-      navigate("/dashboard");
+      if (role === "Participant") {
+        localStorage.setItem("participant_token", data.access_token);
+        navigate("/participant");
+      } else {
+        localStorage.setItem("committee_token", data.access_token);
+        navigate("/dashboard");
+      }
       
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
