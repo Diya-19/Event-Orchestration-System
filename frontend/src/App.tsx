@@ -15,6 +15,7 @@ import Communication from "./pages/Committee Dashboard/Communication";
 import Scoring from "./pages/Committee Dashboard/Scoring";
 import Results from "./pages/Committee Dashboard/Results";
 import JudgeManagement from "./pages/Committee Dashboard/JudgeManagent";
+import ActivityLogs from "./pages/Committee Dashboard/ActivityLogs"; 
 
 // Judge Pages
 import JudgeSidebar from "./pages/Judge/sidebar";
@@ -26,7 +27,7 @@ import EvaluationPage from "./pages/Judge/EvaluationPage";
 import ParticipantSidebar from "./pages/participant/sidebar";
 import ParticipantChat from "./pages/participant/chat";
 import SubmissionPage from "./pages/participant/submission";
-import HelpPage from "./pages/participant/help"; // ✅ CHANGED
+import HelpPage from "./pages/participant/help"; 
 import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 
 // TEMP AUTH BYPASS
@@ -60,6 +61,7 @@ export default function App() {
           <Route path="scoring" element={<Scoring />} />
           <Route path="results" element={<Results />} />
           <Route path="judge-management" element={<JudgeManagement />} />
+          <Route path="activity-logs" element={<ActivityLogs />} /> {/* ✅ ADDED */}
         </Route>
 
         {/* JUDGE DASHBOARD */}
@@ -83,23 +85,23 @@ export default function App() {
 
         {/* PARTICIPANT DASHBOARD */}
         <Route
-        path="/participant"
-        element={
-        <RequireAuth>
-          <div className="flex min-h-screen bg-gray-50">
-            <ParticipantSidebar />
-            <div className="flex-1 overflow-y-auto">
-              <Outlet />
+          path="/participant"
+          element={
+            <RequireAuth>
+              <div className="flex min-h-screen bg-gray-50">
+                <ParticipantSidebar />
+                <div className="flex-1 overflow-y-auto">
+                  <Outlet />
+                </div>
               </div>
-              </div>
-              </RequireAuth>
-            }
-            >
-              <Route index element={<ParticipantDashboard />} />
-              <Route path="chat" element={<ParticipantChat />} />
-              <Route path="submission" element={<SubmissionPage />} />
-              <Route path="support" element={<HelpPage />} />
-              </Route>
+            </RequireAuth>
+          }
+        >
+          <Route index element={<ParticipantDashboard />} />
+          <Route path="chat" element={<ParticipantChat />} />
+          <Route path="submission" element={<SubmissionPage />} />
+          <Route path="support" element={<HelpPage />} />
+        </Route>
 
         {/* DEFAULT REDIRECT */}
         <Route path="*" element={<Navigate to="/dashboard/current-event" replace />} />
