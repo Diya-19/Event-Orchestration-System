@@ -8,33 +8,20 @@ from sqlalchemy.dialects.postgresql import UUID, TIMESTAMP
 
 from app.db import Base
 
-
+    
 class Communication(Base):
-
     __tablename__ = "communications"
 
     id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-
-    event_id       = Column(
-
-        UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False
-
-    )
-
+    event_id       = Column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
     stage          = Column(Text, nullable=False)
-
-    recipient_type = Column(Text, nullable=False)  # participant | evaluator | committee
-
+    recipient_type = Column(Text, nullable=False)
     subject        = Column(Text, nullable=False)
-
-    body_template  = Column(Text, nullable=False)  # LLM-drafted, may contain {{placeholders}}
-
+    body_template  = Column(Text, nullable=False)
     approval_id    = Column(UUID(as_uuid=True), ForeignKey("approval_requests.id"))
-
+    scheduled_for  = Column(TIMESTAMP(timezone=True), nullable=True) 
     status         = Column(Text, nullable=False, default="draft")
-
-    # status values: draft | approved | sent
-
+    # UPDATED status values: draft | pending_approval | approved | scheduled | sent
     created_at     = Column(TIMESTAMP(timezone=True), default=datetime.datetime.utcnow)
 
 

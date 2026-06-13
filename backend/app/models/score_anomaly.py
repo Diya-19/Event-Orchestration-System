@@ -22,6 +22,10 @@ class ScoreAnomaly(Base):
     )
 
     evaluator_id  = Column(UUID(as_uuid=True), ForeignKey("evaluators.id"))
+    
+    evaluation_id = Column(UUID(as_uuid=True), ForeignKey("evaluations.id", ondelete="CASCADE"))
+    dimension = Column(Text)
+    resolution    = Column(Text) # Stores "keep", "override", etc.
 
     flagged_score = Column(Numeric(4, 2), nullable=False)
 

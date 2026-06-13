@@ -10,7 +10,8 @@ import {
   LogOut,
   Sparkles,
   CalendarDays,
-  Send
+  Send,
+  Gavel
 } from "lucide-react";
 
 import {
@@ -27,30 +28,44 @@ import { Event } from "../../types";
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
   { to: "/dashboard/current-event", label: "Current Event", icon: <CalendarDays size={18} /> },
-  { to: "/dashboard/multiple-events", label: "Multiple Events", icon: <FolderKanban size={18} /> },
   { to: "/dashboard/participants", label: "Participants", icon: <Users size={18} /> },
+  { to: "/dashboard/rules", label: "Rules", icon: <Shield size={18} /> },
+  { to: "/dashboard/team-formation", label: "Team Formation", icon: <Sparkles size={18} /> },
+  { to: "/dashboard/judge-management", label: "Judge Management", icon: <Gavel size={18} /> },
   { to: "/dashboard/communication", label: "Communication", icon: <Send size={18} /> },
   { to: "/dashboard/scoring", label: "Scoring", icon: <FolderKanban size={18} /> },
   { to: "/dashboard/results", label: "Results", icon: <Trophy size={18} /> },
-  { to: "/dashboard/rules", label: "Rules", icon: <Shield size={18} /> },
-  { to: "/dashboard/team-formation", label: "Team Formation", icon: <Sparkles size={18} /> }
 ];
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const eventId = searchParams.get("event_id") ?? "";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlEventId = searchParams.get("event_id");
+  const eventId = urlEventId || localStorage.getItem("active_event_id") || "";
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+
+  // 2. Whenever the URL has an ID, save it to memory. 
+  // If the URL is missing it but memory has it, put it back in the URL!
+  useEffect(() => {
+    if (urlEventId) {
+      localStorage.setItem("active_event_id", urlEventId);
+    } else if (eventId) {
+      setSearchParams({ event_id: eventId });
+    }
+  }, [urlEventId, eventId, setSearchParams]);
 
   // Fetch the active event details
   useEffect(() => {
-    if (!eventId) { 
-      setSelectedEvent(null); 
-      return; 
-    }
+    // 1. If there's no eventId, just exit. Don't trigger a synchronous state change.
+    if (!eventId) return; 
+
+    // 2. Fetch the new data
     api.get<Event>(`/api/events/${eventId}`)
       .then(({ data }) => setSelectedEvent(data))
       .catch(() => setSelectedEvent(null));
+
+    // 3. CLEANUP: Clear the old data when eventId changes or the component unmounts.
+    return () => setSelectedEvent(null);
   }, [eventId]);
 
   // Append ?event_id= to every nav link so the selection persists across pages

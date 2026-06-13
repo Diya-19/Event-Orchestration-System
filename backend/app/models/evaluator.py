@@ -26,6 +26,10 @@ class Evaluator(Base):
     name         = Column(Text, nullable=False)
 
     email        = Column(Text, nullable=False)
+    
+    phone_number = Column(Text, nullable=True)
+    organization = Column(Text, nullable=True)
+    expertise    = Column(Text, nullable=True)
 
     access_token = Column(Text, unique=True)  # signed JWT embedded in evaluation-request email
 
