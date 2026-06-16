@@ -1,3 +1,7 @@
+from app.config import settings
+from datetime import date, time
+from pydantic import BaseModel
+from app.models.support_request import SupportRequest
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -132,6 +136,17 @@ class SubmissionUpdate(BaseModel):
     demo_video_url: Optional[str] = None
     is_final_submitted: Optional[bool] = False
     participant_notes: Optional[str] = None
+
+
+class SupportRequestCreate(BaseModel):
+    issue_type: str
+    priority: str
+    conflict_date: date | None = None
+    duration: str | None = None
+    start_time: time | None = None
+    end_time: time | None = None
+    description: str
+    notify_admin: bool = True
 
 def calculate_submission_status(github_link, project_description, presentation_url, demo_video_url):
     progress = 0
@@ -269,3 +284,77 @@ def save_submission(
         "created_at": submission.created_at,
         "updated_at": submission.updated_at
     }
+@router.post("/support-requests")
+def create_support_request(
+    data: SupportRequestCreate,
+    db: Session = Depends(get_db)
+):
+    if not settings.DEV_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Auth required outside DEV_MODE"
+        )
+
+    support_request = SupportRequest(
+        issue_type=data.issue_type,
+        priority=data.priority,
+        conflict_date=data.conflict_date,
+        duration=data.duration,
+        start_time=data.start_time,
+        end_time=data.end_time,
+        description=data.description,
+        notify_admin=data.notify_admin,
+        status="Under Review"
+    )
+
+    db.add(support_request)
+    db.commit()
+    db.refresh(support_request)
+
+    return {
+        "id": support_request.id,
+        "status": support_request.status,
+        "message": "Request submitted successfully"
+    }
+    support_request = SupportRequest(
+        issue_type=data.issue_type,
+        priority=data.priority,
+        conflict_date=data.conflict_date,
+        duration=data.duration,
+        start_time=data.start_time,
+        end_time=data.end_time,
+        description=data.description,
+        notify_admin=data.notify_admin,
+        status="Under Review"
+    )
+
+    db.add(support_request)
+    db.commit()
+    db.refresh(support_request)
+
+    return {
+        "id": support_request.id,
+        "status": support_request.status,
+        "message": "Request submitted successfully"
+    }
+
+
+@router.get("/support-requests")
+def get_support_requests(db: Session = Depends(get_db)):
+    requests = (
+        db.query(SupportRequest)
+        .order_by(SupportRequest.created_at.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id": r.id,
+            "issue_type": r.issue_type,
+            "priority": r.priority,
+            "description": r.description,
+            "status": r.status,
+            "created_at": r.created_at,
+        }
+        for r in requests
+    ]

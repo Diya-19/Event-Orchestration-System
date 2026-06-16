@@ -1,6 +1,6 @@
 // frontend/src/pages/participant/help.tsx
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Shield,
   FileText,
@@ -24,11 +24,36 @@ import {
   Headphones,
 } from "lucide-react";
 
+
 export default function HelpPage() {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<"Low" | "Medium" | "High">("Medium");
   const [notifyAdmin, setNotifyAdmin] = useState(true);
-
+  const [issueType, setIssueType] = useState("");
+  const [conflictDate, setConflictDate] = useState("");
+  const [duration, setDuration] = useState("");
+  const [requests, setRequests] = useState<any[]>([]);
+  const [statusFilter, setStatusFilter] = useState("All Status");
+  const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const getIcon = (issueType: string) => {
+  switch (issueType) {
+    case "Exam Conflict":
+      return FileText;
+    case "Internship Clash":
+      return Briefcase;
+    case "Medical Issue":
+      return Heart;
+    default:
+      return HelpCircle;
+  }
+};
+const filteredRequests =
+  statusFilter === "All Status"
+    ? requests
+    : requests.filter(
+        (request) => request.status === statusFilter
+      );
   const submittedRequests = [
     {
       id: 1,
@@ -83,6 +108,57 @@ export default function HelpPage() {
       statusColor: "bg-red-100 text-red-700 border-red-200",
     },
   ];
+  const fetchRequests = async () => {
+  try {
+    const res = await fetch(
+      "http://127.0.0.1:8000/api/participant/support-requests"
+    );
+
+    const data = await res.json();
+    setRequests(data);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const handleSubmit = async () => {
+  try {
+    const res = await fetch(
+      "http://127.0.0.1:8000/api/participant/support-requests",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          issue_type: issueType,
+          priority,
+          conflict_date: conflictDate,
+          duration,
+          description,
+          notify_admin: notifyAdmin,
+        }),
+      }
+    );
+
+    const data = await res.json();
+
+    alert(data.message);
+
+    setDescription("");
+    setIssueType("");
+    setConflictDate("");
+    setDuration("");
+
+    fetchRequests();
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+useEffect(() => {
+  fetchRequests();
+}, []);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -132,7 +208,10 @@ export default function HelpPage() {
                     Issue Type <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <select className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm appearance-none bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                    <select
+                    value={issueType}
+                    onChange={(e) => setIssueType(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm appearance-none bg-white">
                       <option>Select issue type</option>
                       <option>Technical Issue</option>
                       <option>Team Conflict</option>
@@ -179,7 +258,9 @@ export default function HelpPage() {
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
-                      type="text"
+                      type="date"
+                      value={conflictDate}
+                      onChange={(e) => setConflictDate(e.target.value)}
                       placeholder="Select date"
                       className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                     />
@@ -191,13 +272,16 @@ export default function HelpPage() {
                     Expected Resolution Time
                   </label>
                   <div className="relative">
-                    <select className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm appearance-none bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-gray-500">
-                      <option>Select duration</option>
-                      <option>Within 24 hours</option>
-                      <option>Within 3 days</option>
-                      <option>Within 1 week</option>
-                      <option>No rush</option>
-                    </select>
+                    <select
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm appearance-none bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-gray-500">
+                      <option value="">Select duration</option>
+                      <option value="Within 24 hours">Within 24 hours</option>
+                      <option value="Within 3 days">Within 3 days</option>
+                      <option value="Within 1 week">Within 1 week</option>
+                      <option value="No rush">No rush</option>
+                      </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                   </div>
                 </div>
@@ -218,21 +302,43 @@ export default function HelpPage() {
                 <p className="text-xs text-gray-500 mt-1">{description.length}/1000 characters</p>
               </div>
 
-              {/* Attachment */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Attachment <span className="text-gray-400 font-normal">(Optional)</span>
-                </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-purple-400 hover:bg-purple-50 transition-all cursor-pointer">
-                  <UploadCloud className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-                  <p className="text-sm text-gray-600">
-                    Click to upload or drag and drop
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    PDF, JPG, PNG (Max 5MB)
-                  </p>
-                </div>
-              </div>
+             {/* Attachment */}
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Attachment <span className="text-gray-400 font-normal">(Optional)</span>
+  </label>
+
+  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-purple-400 hover:bg-purple-50 transition-all">
+    
+    <input
+      type="file"
+      accept=".pdf,.jpg,.jpeg,.png"
+      id="attachment-upload"
+      className="hidden"
+      onChange={(e) =>
+        setAttachment(e.target.files?.[0] || null)
+      }
+    />
+
+    <label
+      htmlFor="attachment-upload"
+      className="cursor-pointer block"
+    >
+      <UploadCloud className="w-8 h-8 text-gray-400 mx-auto mb-3" />
+
+      <p className="text-sm text-gray-600">
+        {attachment
+          ? attachment.name
+          : "Click to upload or drag and drop"}
+      </p>
+
+      <p className="text-xs text-gray-500 mt-1">
+        PDF, JPG, PNG (Max 5MB)
+      </p>
+    </label>
+
+  </div>
+</div>
 
               {/* Notify Toggle */}
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -262,7 +368,9 @@ export default function HelpPage() {
                 <button className="px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
                   Clear
                 </button>
-                <button className="flex-1 px-6 py-2.5 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2">
+                <button
+                onClick={handleSubmit}
+                className="flex-1 px-6 py-2.5 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2">
                   Submit Request
                   <Send className="w-4 h-4" />
                 </button>
@@ -280,7 +388,7 @@ export default function HelpPage() {
             {/* Filter */}
             <div className="flex justify-end mb-4">
               <div className="relative">
-                <select className="px-4 py-2 border border-gray-300 rounded-lg text-sm appearance-none bg-white focus:ring-2 focus:ring-purple-500 outline-none">
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm appearance-none bg-white focus:ring-2 focus:ring-purple-500 outline-none">
                   <option>All Status</option>
                   <option>Under Review</option>
                   <option>In Progress</option>
@@ -293,21 +401,30 @@ export default function HelpPage() {
 
             {/* Requests List */}
             <div className="space-y-4">
-              {submittedRequests.map((request) => (
+              {filteredRequests.map((request) => (
                 <div key={request.id} className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className={`w-12 h-12 ${request.iconBg} rounded-xl flex items-center justify-center`}>
-                        <request.icon className={`w-6 h-6 ${request.iconColor}`} />
+                        <FileText className="w-6 h-6 text-yellow-600" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900">{request.type}</h3>
+                        <h3 className="font-semibold text-gray-900">{request.issue_type}</h3>
                         <p className="text-sm text-gray-600 mt-0.5 leading-relaxed">{request.description}</p>
                       </div>
                     </div>
-                    <span className={`px-3 py-1 text-xs font-bold rounded-full border ${request.statusColor}`}>
-                      {request.status}
-                    </span>
+                    <span
+                    className={`px-3 py-1 text-xs font-bold rounded-full border ${
+                      request.status === "Under Review"
+                      ? "bg-yellow-100 text-yellow-700 border-yellow-200"
+                      : request.status === "Approved"
+                      ? "bg-green-100 text-green-700 border-green-200"
+                      : request.status === "Resolved"
+                      ? "bg-blue-100 text-blue-700 border-blue-200"
+                      : "bg-red-100 text-red-700 border-red-200"
+                      }`}>
+                        {request.status}
+                        </span>
                   </div>
 
                   <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
@@ -324,9 +441,12 @@ export default function HelpPage() {
 
                   <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                     <p className="text-xs text-gray-500">
-                      Submitted on {request.submittedDate}
-                    </p>
-                    <button className="px-4 py-1.5 border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5">
+                      Submitted on{" "}
+                      {request.created_at
+                      ? new Date(request.created_at).toLocaleString()
+                      : "N/A"}
+                      </p>
+                    <button onClick={() => setSelectedRequest(request)} className="px-4 py-1.5 border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5">
                       <Eye className="w-3.5 h-3.5" />
                       View Details
                     </button>
@@ -353,6 +473,36 @@ export default function HelpPage() {
       </main>
 
       {/* Footer */}
+            {selectedRequest && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-[500px] shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold">Support Request Details</h2>
+
+              <button
+                onClick={() => setSelectedRequest(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm">
+              <p><strong>Issue Type:</strong> {selectedRequest.issue_type}</p>
+              <p><strong>Priority:</strong> {selectedRequest.priority}</p>
+              <p><strong>Status:</strong> {selectedRequest.status}</p>
+              <p><strong>Description:</strong> {selectedRequest.description}</p>
+
+              {selectedRequest.created_at && (
+                <p>
+                  <strong>Submitted:</strong>{" "}
+                  {new Date(selectedRequest.created_at).toLocaleString()}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <footer className="bg-white border-t border-gray-200 px-8 py-4 flex items-center justify-between text-xs text-gray-500">
         <span>© 2026 HackFlow. All rights reserved.</span>
         <div className="flex items-center gap-4">
