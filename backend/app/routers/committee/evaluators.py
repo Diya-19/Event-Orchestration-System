@@ -8,9 +8,7 @@ from app.db import get_db
 from app.auth import require_committee
 from app.models import Evaluator, Evaluation, Team, Event, ActivityLog
 from app.websocket_manager import manager
-
-# IMPORTANT: Import your actual celery task here. Adjust the path if needed!
-# from app.tasks.communication_tasks import notify_evaluators_task
+from app.tasks.communication_tasks import notify_evaluators_task
 
 router = APIRouter()
 
@@ -145,8 +143,7 @@ def notify_evaluators(
     if not evaluators:
         raise HTTPException(400, "No evaluators added yet")
 
-    # TODO: Trigger your actual celery task here
-    # notify_evaluators_task.delay(str(event_id))
+    notify_evaluators_task.delay(str(event_id))
 
     db.add(ActivityLog(
         event_id=event_id,

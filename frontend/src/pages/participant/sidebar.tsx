@@ -1,4 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { clearParticipantToken } from "../../lib/auth";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -16,6 +17,7 @@ const menuItems = [
 
 export default function ParticipantSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // ✅ FIXED: Only highlights the exact current route
  const isActive = (path: string) => {
@@ -67,15 +69,21 @@ export default function ParticipantSidebar() {
           <p className="text-xs text-purple-700 mb-3">
             Facing any issue? Our support team is here to help you.
           </p>
-          <button className="w-full py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
+          <Link to="/participant/support" className="block text-center w-full py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
             Contact Support
-          </button>
+          </Link>
         </div>
       </div>
 
       {/* Logout */}
       <div className="p-4">
-        <button className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all">
+        <button 
+          onClick={() => {
+            clearParticipantToken();
+            navigate("/login");
+          }}
+          className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all"
+        >
           <LogOut size={20} />
           Logout
         </button>

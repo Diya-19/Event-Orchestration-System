@@ -108,6 +108,16 @@ export default function TeamFormation() {
     }
   };
 
+  const handleNotifyParticipants = async () => {
+    if (!eventId) return;
+    try {
+      const res = await api.post(`/api/events/${eventId}/teams/notify-participants`);
+      alert(res.data?.message ?? "Participant notifications queued successfully!");
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to send notifications.");
+    }
+  };
+
   const handleClear = async () => {
     if (!eventId) return;
     if (!window.confirm("Are you sure you want to delete all generated teams?")) return;
@@ -141,6 +151,7 @@ export default function TeamFormation() {
 
   const draftCount = filteredTeams.filter(t => t.status === "draft").length;
   const isAllSelected = draftCount > 0 && selectedTeamIds.length === draftCount;
+  const hasApprovedTeams = teams.some(t => t.status === "approved");
 
   return (
     <div className="min-h-screen bg-[#f7f5fb] px-7 py-7">
@@ -371,12 +382,19 @@ export default function TeamFormation() {
               >
                 {selectedTeamIds.length > 0 ? `✓ Approve (${selectedTeamIds.length})` : "✓ Approve Teams"}
               </button>
-              <button 
+              <button
                 onClick={handleClear}
                 disabled={teams.length === 0}
                 className="w-full border border-[#fecaca] text-[#ef4444] rounded-2xl p-4 font-medium hover:bg-[#fef2f2] transition disabled:opacity-50"
               >
                 🗑 Clear All Teams
+              </button>
+              <button
+                onClick={handleNotifyParticipants}
+                disabled={!hasApprovedTeams}
+                className="w-full bg-[#eff6ff] text-[#2563eb] rounded-2xl p-4 font-medium hover:bg-[#dbeafe] transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                📧 Notify All Participants
               </button>
             </div>
           </div>

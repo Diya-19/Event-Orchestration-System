@@ -14,7 +14,8 @@ from app.routers.committee import (
     scores,
     dashboard,
     rules,
-    communications
+    communications,
+    activity_logs,
 )
 
 # Portal Routers
@@ -48,10 +49,11 @@ app.include_router(scores.router, prefix="/api/events/{event_id}/scores", tags=[
 app.include_router(rules.router, prefix="/api/events", tags=["rules"])
 app.include_router(communications.router, prefix="/api/events/{event_id}/communications", tags=["communications"])
 app.include_router(evaluators.router, prefix="/api/events/{event_id}/evaluators", tags=["evaluators"])
+app.include_router(activity_logs.router, prefix="/api/activity-logs", tags=["Activity Logs"])
 
 
 # Public/Portal API
-#app.include_router(portal_participant.router, prefix="/api/portal/participant", tags=["Portal - Participant"])
+app.include_router(portal_participant.router, prefix="/api/portal/participant", tags=["Portal - Participant"])
 #app.include_router(portal_evaluator.router, prefix="/api/portal/evaluator", tags=["Portal - Evaluator"])
 
 # Judge Portal Routers

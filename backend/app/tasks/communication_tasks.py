@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from app.celery_app import celery_app
 from celery.exceptions import Retry
 from sqlalchemy.orm import Session
@@ -13,9 +13,11 @@ from python_http_client.exceptions import HTTPError
 
 from app.db import SessionLocal
 from app.models import (
-    Communication, CommunicationLog, Participant, 
+    Communication, CommunicationLog, Participant,
     Evaluator, TeamMember, Team, Event
 )
+from app.services.token_service import create_access_token
+from app.config import settings
 
 def render_template(template: str, context: dict) -> str:
     """Replaces {{placeholders}} with context values."""
@@ -202,6 +204,180 @@ async def draft_and_send_emails_task(self, event_id_str: str, approval_id_str: s
             comm.status = "failed"
             db.commit()
         return str(nie)
+    except Exception as exc:
+        db.rollback()
+        raise self.retry(exc=exc, countdown=60)
+    finally:
+        db.close()
+
+
+# ==========================================
+# JUDGE NOTIFICATION TASK
+# ==========================================
+
+def _send_judge_email(sg: SendGridAPIClient, from_email: str, evaluator: Evaluator, event: Event, login_url: str):
+    """Send a single magic-link invitation email to an evaluator."""
+    subject = f"You're invited to judge: {event.name}"
+    html_body = f"""
+    <p>Hi {evaluator.name},</p>
+    <p>You have been invited to evaluate submissions for <strong>{event.name}</strong>.</p>
+    <p>Click the button below to access your judge portal. This link is personal and unique to you.</p>
+    <p style="margin: 24px 0;">
+      <a href="{login_url}" style="background:#7c3aed;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">
+        Open Judge Portal
+      </a>
+    </p>
+    <p style="color:#6b7280;font-size:0.875rem;">
+      If the button doesn't work, copy and paste this link into your browser:<br/>
+      <a href="{login_url}">{login_url}</a>
+    </p>
+    <p style="color:#6b7280;font-size:0.875rem;">This link is valid for 30 days.</p>
+    """
+    message = Mail(
+        from_email=from_email,
+        to_emails=evaluator.email,
+        subject=subject,
+        html_content=html_body,
+    )
+    return sg.send(message)
+
+
+# ==========================================
+# PARTICIPANT NOTIFICATION TASK
+# ==========================================
+
+def _send_participant_email(sg: SendGridAPIClient, from_email: str, participant: Participant, event: Event, login_url: str):
+    """Send a magic-link invitation email to a participant whose team was approved."""
+    subject = f"Your access link for {event.name}"
+    html_body = f"""
+    <p>Hi {participant.name},</p>
+    <p>Great news — your team has been approved for <strong>{event.name}</strong>!</p>
+    <p>Click the button below to access your participant portal. This link is personal and unique to you.</p>
+    <p style="margin: 24px 0;">
+      <a href="{login_url}" style="background:#7c3aed;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">
+        Open Participant Portal
+      </a>
+    </p>
+    <p style="color:#6b7280;font-size:0.875rem;">
+      If the button doesn't work, copy and paste this link into your browser:<br/>
+      <a href="{login_url}">{login_url}</a>
+    </p>
+    <p style="color:#6b7280;font-size:0.875rem;">This link is valid for 30 days.</p>
+    """
+    message = Mail(
+        from_email=from_email,
+        to_emails=participant.email,
+        subject=subject,
+        html_content=html_body,
+    )
+    return sg.send(message)
+
+
+@celery_app.task(name="notify_participants_task", bind=True, max_retries=3)
+def notify_participants_task(self, event_id_str: str):
+    db: Session = SessionLocal()
+    try:
+        event = db.get(Event, uuid.UUID(event_id_str))
+        if not event:
+            return "Event not found."
+
+        approved_teams = db.execute(
+            select(Team).where(Team.event_id == event.id, Team.status == "approved")
+        ).scalars().all()
+
+        if not approved_teams:
+            return "No approved teams to notify."
+
+        approved_team_ids = [t.id for t in approved_teams]
+
+        members = db.execute(
+            select(TeamMember).where(TeamMember.team_id.in_(approved_team_ids))
+        ).scalars().all()
+
+        if not members:
+            return "No participants in approved teams."
+
+        frontend_base = settings.FRONTEND_URL
+        sg = SendGridAPIClient(os.environ.get("SENDGRID_API_KEY", ""))
+        from_email = os.environ.get("FROM_EMAIL", "noreply@hackflow.app")
+
+        success_count = 0
+        for member in members:
+            participant = db.get(Participant, member.participant_id)
+            if not participant:
+                continue
+
+            token = create_access_token(
+                {"sub": f"participant:{participant.id}", "event": event_id_str},
+                expires_delta=timedelta(days=30),
+            )
+            participant.portal_token = token
+            login_url = f"{frontend_base}/login?participant_token={token}"
+
+            try:
+                _send_participant_email(sg, from_email, participant, event, login_url)
+                success_count += 1
+            except HTTPError as e:
+                error_details = e.body.decode("utf-8") if e.body else str(e)
+                print(f"SendGrid rejected email to {participant.email}: {error_details}")
+            except Exception as e:
+                print(f"Failed to send email to {participant.email}: {e}")
+
+        db.commit()
+        return f"Notified {success_count} participants in approved teams."
+
+    except Exception as exc:
+        db.rollback()
+        raise self.retry(exc=exc, countdown=60)
+    finally:
+        db.close()
+
+
+# ==========================================
+# JUDGE NOTIFICATION TASK
+# ==========================================
+
+@celery_app.task(name="notify_evaluators_task", bind=True, max_retries=3)
+def notify_evaluators_task(self, event_id_str: str):
+    db: Session = SessionLocal()
+    try:
+        event = db.get(Event, uuid.UUID(event_id_str))
+        if not event:
+            return "Event not found."
+
+        evaluators = db.execute(
+            select(Evaluator).where(Evaluator.event_id == event.id)
+        ).scalars().all()
+
+        if not evaluators:
+            return "No evaluators to notify."
+
+        frontend_base = settings.FRONTEND_URL
+        sg = SendGridAPIClient(os.environ.get("SENDGRID_API_KEY", ""))
+        from_email = os.environ.get("FROM_EMAIL", "noreply@hackflow.app")
+
+        success_count = 0
+        for ev in evaluators:
+            # Generate a fresh JWT and persist it — this rotates any old link.
+            token = create_access_token(
+                {"sub": f"evaluator:{ev.id}", "event": event_id_str},
+                expires_delta=timedelta(days=30),
+            )
+            ev.access_token = token
+            login_url = f"{frontend_base}/login?token={token}"
+
+            try:
+                _send_judge_email(sg, from_email, ev, event, login_url)
+                success_count += 1
+            except HTTPError as e:
+                error_details = e.body.decode("utf-8") if e.body else str(e)
+                print(f"SendGrid rejected email to {ev.email}: {error_details}")
+            except Exception as e:
+                print(f"Failed to send email to {ev.email}: {e}")
+
+        db.commit()
+        return f"Notified {success_count}/{len(evaluators)} evaluators."
+
     except Exception as exc:
         db.rollback()
         raise self.retry(exc=exc, countdown=60)

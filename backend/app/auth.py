@@ -7,6 +7,7 @@ from app.services.token_service import verify_token
 from app.models.committee_user import CommitteeUser
 from app.models.evaluator import Evaluator
 from app.config import settings
+from app.models.participant import Participant
 
 _bearer = HTTPBearer()
 _optional_bearer = HTTPBearer(auto_error=False)
@@ -45,9 +46,9 @@ def require_evaluator(
     Supports DEV_MODE bypass.
     """
     if settings.DEV_MODE:
-        dummy_id = "00000000-0000-0000-0000-000000000000"
-        dummy_event_id = "415e7b26-90e3-40f1-b64b-e753c6b9d930"
-        
+        dummy_id = settings.DEV_EVALUATOR_ID
+        dummy_event_id = settings.DEV_EVENT_ID
+
         evaluator = db.get(Evaluator, dummy_id)
         if not evaluator:
             evaluator = Evaluator(
@@ -82,3 +83,46 @@ def require_evaluator(
         "email": evaluator.email,
         "event_id": str(evaluator.event_id)
     }
+
+def require_participant(
+    creds: HTTPAuthorizationCredentials = Depends(_optional_bearer),
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    FastAPI dependency for participant-authenticated routes.
+    Supports DEV_MODE bypass.
+    """
+    if settings.DEV_MODE:
+        dummy_id = settings.DEV_PARTICIPANT_ID
+        dummy_event_id = settings.DEV_EVENT_ID
+
+        participant = db.get(Participant, dummy_id)
+        if not participant:
+            participant = Participant(
+                id=dummy_id,
+                event_id=dummy_event_id,
+                name="DEV Participant",
+                email="dummy@participant.local",
+                portal_token="dev-participant-token",
+            )
+            db.add(participant)
+            db.commit()
+
+        return {
+            "sub": f"participant:{dummy_id}",
+            "participant_id": dummy_id,
+            "email": "dummy@participant.local",
+        }
+
+    if not creds:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    payload = verify_token(creds.credentials)
+    sub: str = payload.get("sub", "")
+    if not sub.startswith("participant:"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a participant token")
+    participant_id = sub.split(":", 1)[1]
+    participant = db.get(Participant, participant_id)
+    if not participant:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Participant not found")
+    return {"sub": sub, "participant_id": participant_id, "email": participant.email}

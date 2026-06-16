@@ -14,6 +14,7 @@ import Communication from "./pages/Committee Dashboard/Communication";
 import Scoring from "./pages/Committee Dashboard/Scoring";
 import JudgeManagement from "./pages/Committee Dashboard/JudgeManagement";
 import Results from "./pages/Committee Dashboard/Results";
+import ActivityLogs from "./pages/Committee Dashboard/ActivityLogs"; 
 
 // Judge Pages
 import JudgeSidebar from "./pages/Judge/sidebar";
@@ -29,8 +30,9 @@ import JudgeProfile from "./pages/Judge/Profile";
 import ParticipantSidebar from "./pages/participant/sidebar";
 import ParticipantChat from "./pages/participant/chat";
 import SubmissionPage from "./pages/participant/submission";
-import HelpPage from "./pages/participant/help"; // ✅ CHANGED
+import HelpPage from "./pages/participant/help"; 
 import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
+import TeamPage from "./pages/participant/TeamPage";
 
 // import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 
@@ -65,6 +67,19 @@ function RequireJudgeAuth({ children }: { children: JSX.Element }) {
     return <Navigate to="/login" replace />; 
   }
   
+  return children;
+}
+
+// PARTICIPANT AUTH (With DEV_MODE Support)
+function RequireParticipantAuth({ children }: { children: JSX.Element }) {
+  const isDev = import.meta.env.VITE_DEV_MODE === "true";
+  if (isDev) {
+    return children;
+  }
+  const token = localStorage.getItem("participant_token");
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
   return children;
 }
 
@@ -142,6 +157,10 @@ export default function App() {
           path="results"
           element={<Results />}
           />
+          <Route
+          path="activity-logs"
+          element={<ActivityLogs />}
+          />
         </Route>
 
 
@@ -170,17 +189,18 @@ export default function App() {
         <Route
         path="/participant"
         element={
-        <RequireAuth>
+        <RequireParticipantAuth>
           <div className="flex min-h-screen bg-gray-50">
             <ParticipantSidebar />
             <div className="flex-1 overflow-y-auto">
               <Outlet />
               </div>
               </div>
-              </RequireAuth>
+              </RequireParticipantAuth>
             }
             >
               <Route index element={<ParticipantDashboard />} />
+              <Route path="team" element={<TeamPage />} />
               <Route path="chat" element={<ParticipantChat />} />
               <Route path="submission" element={<SubmissionPage />} />
               <Route path="support" element={<HelpPage />} />

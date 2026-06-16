@@ -24,6 +24,8 @@ from app.models.communication import Communication, CommunicationLog
 
 from app.models.activity_log import ActivityLog
 
+from app.models.submissions import Submission
+
 __all__ = [
 
     "CommitteeUser",
@@ -51,5 +53,7 @@ __all__ = [
     "CommunicationLog",
 
     "ActivityLog",
+
+    "Submission",
 
 ]

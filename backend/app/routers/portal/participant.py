@@ -1,194 +1,271 @@
-import uuid
-
-from fastapi import APIRouter, Depends, HTTPException
-
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-
-from sqlalchemy import select
-
 from app.db import get_db
-
-from app.auth import decode_token
-
-from app.models import Participant, Team, TeamMember, Event, ActivityLog
+from app.auth import require_participant
+from app.models.participant import Participant
+from app.models.team import Team
+from app.models.team_member import TeamMember
+from app.models.event import Event
 
 router = APIRouter()
 
-
-def _resolve_participant(token: str, db: Session) -> Participant:
-
-    """
-
-    Validates portal JWT (from ?token= query param, passed as Bearer).
-
-    sub must be 'participant:<uuid>'.
-
-    """
-
-    try:
-
-        payload = decode_token(token)
-
-    except Exception:
-
-        raise HTTPException(401, "Invalid or expired portal link")
-
-    sub = payload.get("sub", "")
-
-    if not sub.startswith("participant:"):
-
-        raise HTTPException(403, "Token is not a participant portal token")
-
-    participant_id = uuid.UUID(sub.split(":", 1)[1])
-
-    p = db.get(Participant, participant_id)
-
-    if not p:
-
-        raise HTTPException(404, "Participant not found")
-
-    return p
-
-
-@router.get("/status")
-
-def participant_status(
-
-    token: str,
-
+@router.get("/dashboard")
+def get_dashboard(
     db: Session = Depends(get_db),
-
+    actor: dict = Depends(require_participant)
 ):
-
-    """
-
-    Query param: ?token=<jwt>
-
-    Returns participant info, team assignment, event pipeline stage.
-
-    """
-
-    participant = _resolve_participant(token, db)
-
-    membership = db.execute(
-
-        select(TeamMember).where(TeamMember.participant_id == participant.id)
-
-    ).scalar_one_or_none()
-
+    participant_id = actor["participant_id"]
+    participant = db.query(Participant).filter(Participant.id == participant_id).first()
+    
+    if not participant:
+        raise HTTPException(status_code=404, detail="Participant not found")
+        
+    event = db.query(Event).filter(Event.id == participant.event_id).first()
+    
+    # Get Team logic
+    tm = db.query(TeamMember).filter(TeamMember.participant_id == participant.id).first()
+    
     team_data = None
-
-    event_data = None
-
-    if membership:
-
-        team = db.get(Team, membership.team_id)
-
+    members_data = []
+    
+    if tm:
+        team = db.query(Team).filter(Team.id == tm.team_id).first()
         if team:
-
-            event = db.get(Event, team.event_id)
-
             team_data = {
-
                 "id": str(team.id),
-
                 "name": team.name,
-
-                "challenge": team.challenge,
-
-                "status": team.status,
-
+                "registration_id": None
             }
+            
+            # Fetch all members of this team
+            team_members = db.query(TeamMember).filter(TeamMember.team_id == team.id).all()
+            for member in team_members:
+                p = db.query(Participant).filter(Participant.id == member.participant_id).first()
+                if p:
+                    members_data.append({
+                        "id": str(p.id),
+                        "name": p.name
+                    })
 
-            if event:
-
-                event_data = {
-
-                    "name": event.name,
-
-                    "current_stage": event.current_stage,
-
-                    "config": event.config,
-
-                }
-
+    # Prepare event data safely checking config
+    config = event.config or {} if event else {}
+    schedule = config.get("schedule", {})
+    
     return {
-
         "participant": {
-
             "id": str(participant.id),
-
             "name": participant.name,
-
-            "email": participant.email,
-
-            "skills": participant.skills or [],
-
-            "registration_status": participant.registration_status,
-
+            "email": participant.email
         },
-
         "team": team_data,
-
-        "event": event_data,
-
+        "members": members_data,
+        "event": {
+            "name": event.name if event else "",
+            "theme": config.get("theme", ""),
+            "current_stage": event.current_stage if event else "",
+            "start_date": schedule.get("start_date", ""),
+            "end_date": schedule.get("end_date", ""),
+            "submission_deadline": schedule.get("submission_deadline", ""),
+            "evaluation_start": schedule.get("evaluation_start", "")
+        }
     }
 
-
-@router.post("/progression/confirm")
-
-def confirm_progression(
-
-    token: str,
-
+@router.get("/team")
+def get_team_details(
     db: Session = Depends(get_db),
-
+    actor: dict = Depends(require_participant)
 ):
-
-    """
-
-    Participant confirms they want to progress to the next round.
-
-    Only valid in stage 'completed'.
-
-    """
-
-    participant = _resolve_participant(token, db)
-
-    membership = db.execute(
-
-        select(TeamMember).where(TeamMember.participant_id == participant.id)
-
-    ).scalar_one_or_none()
-
-    if not membership:
-
-        raise HTTPException(400, "You are not assigned to a team")
-
-    team = db.get(Team, membership.team_id)
-
+    participant_id = actor["participant_id"]
+    participant = db.query(Participant).filter(Participant.id == participant_id).first()
+    
+    if not participant:
+        raise HTTPException(status_code=404, detail="Participant not found")
+        
+    tm = db.query(TeamMember).filter(TeamMember.participant_id == participant.id).first()
+    if not tm:
+        raise HTTPException(status_code=404, detail="Not assigned to a team")
+        
+    team = db.query(Team).filter(Team.id == tm.team_id).first()
     if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
 
-        raise HTTPException(404, "Team not found")
+    members_data = []
+    team_members = db.query(TeamMember).filter(TeamMember.team_id == team.id).all()
+    for member in team_members:
+        p = db.query(Participant).filter(Participant.id == member.participant_id).first()
+        if p:
+            members_data.append({
+                "id": str(p.id),
+                "name": p.name,
+                "email": p.email,
+                "institution": p.institution or "",
+                "skills": p.skills or []
+            })
+            
+    # Mock track/mentor since these relationships may not explicitly exist yet or are handled differently
+    # The prompt says: "Only return fields that already exist in DB. If mentor/track are unavailable: return null."
+    track_data = None
+    if team.challenge:
+        track_data = {
+            "id": "challenge",
+            "name": team.challenge
+        }
 
-    event = db.get(Event, team.event_id)
+    return {
+        "team": {
+            "id": str(team.id),
+            "name": team.name,
+            "registration_id": None
+        },
+        "track": track_data,
+        "members": members_data
+    }
 
-    if not event or event.current_stage != "completed":
+from pydantic import BaseModel
+from typing import Optional
+from app.models.submissions import Submission
 
-        raise HTTPException(400, "Progression confirmation is only available after results are published")
+class SubmissionUpdate(BaseModel):
+    github_link: Optional[str] = None
+    project_description: Optional[str] = None
+    presentation_url: Optional[str] = None
+    demo_video_url: Optional[str] = None
+    is_final_submitted: Optional[bool] = False
+    participant_notes: Optional[str] = None
 
-    db.add(ActivityLog(
+def calculate_submission_status(github_link, project_description, presentation_url, demo_video_url):
+    progress = 0
+    if github_link: progress += 25
+    if project_description: progress += 25
+    if presentation_url: progress += 25
+    if demo_video_url: progress += 25
+    
+    if progress == 0:
+        return "DRAFT"
+    elif progress < 100:
+        return "IN_PROGRESS"
+    else:
+        return "READY"
 
-        event_id=team.event_id,
+@router.get("/submission")
+def get_submission(
+    db: Session = Depends(get_db),
+    actor: dict = Depends(require_participant)
+):
+    participant_id = actor["participant_id"]
+    participant = db.query(Participant).filter(Participant.id == participant_id).first()
+    if not participant:
+        raise HTTPException(status_code=404, detail="Participant not found")
+        
+    tm = db.query(TeamMember).filter(TeamMember.participant_id == participant.id).first()
+    if not tm:
+        raise HTTPException(status_code=404, detail="Not assigned to a team")
+        
+    submission = db.query(Submission).filter(Submission.team_id == tm.team_id).first()
+    if not submission:
+        return None
+        
+    return {
+        "id": str(submission.id),
+        "team_id": str(submission.team_id),
+        "event_id": str(submission.event_id),
+        "github_link": submission.github_link,
+        "project_description": submission.project_description,
+        "presentation_url": submission.presentation_url,
+        "demo_video_url": submission.demo_video_url,
+        "status": submission.status,
+        "participant_notes": submission.participant_notes,
+        "created_at": submission.created_at,
+        "updated_at": submission.updated_at
+    }
 
-        actor=f"participant:{participant.id}",
+@router.post("/submission")
+def save_submission(
+    data: SubmissionUpdate,
+    db: Session = Depends(get_db),
+    actor: dict = Depends(require_participant)
+):
+    participant_id = actor["participant_id"]
+    participant = db.query(Participant).filter(Participant.id == participant_id).first()
+    if not participant:
+        raise HTTPException(status_code=404, detail="Participant not found")
+        
+    tm = db.query(TeamMember).filter(TeamMember.participant_id == participant.id).first()
+    if not tm:
+        raise HTTPException(status_code=404, detail="Not assigned to a team")
+        
+    submission = db.query(Submission).filter(Submission.team_id == tm.team_id).first()
+    
+    if submission:
+        if data.github_link is not None:
+            submission.github_link = data.github_link
+        if data.project_description is not None:
+            submission.project_description = data.project_description
+        if data.presentation_url is not None:
+            submission.presentation_url = data.presentation_url
+        if data.demo_video_url is not None:
+            submission.demo_video_url = data.demo_video_url
+        if data.participant_notes is not None:
+            submission.participant_notes = data.participant_notes
+        
+        calculated_status = calculate_submission_status(
+            submission.github_link,
+            submission.project_description,
+            submission.presentation_url,
+            submission.demo_video_url
+        )
 
-        action="progression_confirmed",
-
-        details={"participant_id": str(participant.id), "team_id": str(team.id)},
-
-    ))
-
+        if data.is_final_submitted:
+            if not (submission.github_link and submission.project_description and submission.presentation_url and submission.demo_video_url):
+                raise HTTPException(
+                    status_code=400,
+                    detail="All deliverables must be completed before final submission"
+                )
+            submission.status = "SUBMITTED"
+        elif submission.status != "SUBMITTED":
+            submission.status = calculated_status
+    else:
+        calculated_status = calculate_submission_status(
+            data.github_link,
+            data.project_description,
+            data.presentation_url,
+            data.demo_video_url
+        )
+        if data.is_final_submitted:
+            if not (data.github_link and data.project_description and data.presentation_url and data.demo_video_url):
+                raise HTTPException(
+                    status_code=400,
+                    detail="All deliverables must be completed before final submission"
+                )
+            status_val = "SUBMITTED"
+        else:
+            status_val = calculated_status
+            
+        submission = Submission(
+            team_id=tm.team_id,
+            event_id=participant.event_id,
+            github_link=data.github_link,
+            project_description=data.project_description,
+            presentation_url=data.presentation_url,
+            demo_video_url=data.demo_video_url,
+            participant_notes=data.participant_notes,
+            status=status_val
+        )
+        db.add(submission)
+        
     db.commit()
-
-    return {"message": "Progression confirmed. You will be contacted with next steps."}
+    db.refresh(submission)
+    
+    return {
+        "id": str(submission.id),
+        "team_id": str(submission.team_id),
+        "event_id": str(submission.event_id),
+        "github_link": submission.github_link,
+        "project_description": submission.project_description,
+        "presentation_url": submission.presentation_url,
+        "demo_video_url": submission.demo_video_url,
+        "status": submission.status,
+        "participant_notes": submission.participant_notes,
+        "created_at": submission.created_at,
+        "updated_at": submission.updated_at
+    }

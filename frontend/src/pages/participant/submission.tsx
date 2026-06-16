@@ -1,6 +1,7 @@
 // frontend/src/pages/participant/submission.tsx
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import {
   CheckCircle,
   Circle,
@@ -21,10 +22,109 @@ import {
   HelpCircle,
   ArrowRight,
 } from "lucide-react";
+import { participantService, SubmissionResponse, DashboardResponse } from "../../lib/participantService";
 
 export default function SubmissionPage() {
+  const [data, setData] = useState<SubmissionResponse | null>(null);
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
   const [description, setDescription] = useState("");
+  const [githubLink, setGithubLink] = useState("");
+  const [demoVideo, setDemoVideo] = useState("");
+  const [presentation, setPresentation] = useState("");
+  const [notes, setNotes] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+
+  const location = useLocation();
+  const githubRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const presentationRef = useRef<HTMLInputElement>(null);
+  const demoRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    Promise.all([
+      participantService.getDashboard(),
+      participantService.getSubmission()
+    ])
+    .then(([dashRes, subRes]) => {
+      setDashboard(dashRes);
+      if (subRes) {
+        setData(subRes);
+        setDescription(subRes.project_description || "");
+        setGithubLink(subRes.github_link || "");
+        setDemoVideo(subRes.demo_video_url || "");
+        setPresentation(subRes.presentation_url || "");
+        setNotes(subRes.participant_notes || "");
+      }
+    })
+    .catch((err) => setError(err.message || "Failed to load data"))
+    .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      const params = new URLSearchParams(location.search);
+      const focus = params.get("focus");
+      if (focus) {
+        setTimeout(() => {
+          let targetRef = null;
+          if (focus === "github") targetRef = githubRef;
+          if (focus === "description") targetRef = descriptionRef;
+          if (focus === "presentation") targetRef = presentationRef;
+          if (focus === "demo") targetRef = demoRef;
+          
+          if (targetRef?.current) {
+            targetRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+            targetRef.current.focus();
+          }
+        }, 300);
+      }
+    }
+  }, [loading, location.search]);
+
+  const handleSave = async (isFinal = false) => {
+    if (isFinal && !confirmed) {
+      alert("Please confirm the submission by checking the box.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await participantService.saveSubmission({
+        github_link: githubLink,
+        project_description: description,
+        demo_video_url: demoVideo,
+        presentation_url: presentation,
+        participant_notes: notes,
+        is_final_submitted: isFinal
+      });
+      setData(res);
+      if (isFinal) {
+        alert("Project submitted successfully!");
+      } else {
+        alert("Draft saved successfully!");
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to save submission");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="p-8 text-gray-500">Loading submission data...</div>;
+  if (error) return <div className="p-8 text-red-500">{error}</div>;
+
   const wordCount = description.split(/\s+/).filter(Boolean).length;
+  
+  // Calculate progress locally for the checklist
+  let progress = 0;
+  if (githubLink) progress += 25;
+  if (description) progress += 25;
+  if (presentation) progress += 25;
+  if (demoVideo) progress += 25;
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -57,24 +157,6 @@ export default function SubmissionPage() {
               </p>
             </div>
           </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="p-2.5 bg-purple-100 rounded-lg">
-              <CalendarClock className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium mb-1">Round 1 Submission Deadline</p>
-              <div className="flex items-center gap-3 text-sm font-bold text-gray-900">
-                <span className="flex flex-col items-center"><span className="text-lg">05</span><span className="text-[10px] text-gray-500 font-normal uppercase tracking-wider">Days</span></span>
-                <span className="text-gray-400">:</span>
-                <span className="flex flex-col items-center"><span className="text-lg">12</span><span className="text-[10px] text-gray-500 font-normal uppercase tracking-wider">Hours</span></span>
-                <span className="text-gray-400">:</span>
-                <span className="flex flex-col items-center"><span className="text-lg">48</span><span className="text-[10px] text-gray-500 font-normal uppercase tracking-wider">Mins</span></span>
-                <span className="text-gray-400">:</span>
-                <span className="flex flex-col items-center"><span className="text-lg">32</span><span className="text-[10px] text-gray-500 font-normal uppercase tracking-wider">Secs</span></span>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Tabs */}
@@ -82,61 +164,79 @@ export default function SubmissionPage() {
           <button className="pb-3 text-sm font-semibold text-purple-600 border-b-2 border-purple-600">
             Submit Project
           </button>
-          <button className="pb-3 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent">
-            My Submissions
-          </button>
         </div>
 
-        <div className="flex gap-8 items-start">
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
           {/* Main Form Area */}
-          <div className="flex-1 bg-white border border-gray-200 rounded-xl p-8 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-900 mb-6">Project Details</h2>
+          <div className="flex-1 bg-white border border-gray-200 rounded-xl p-8 shadow-sm w-full">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-bold text-gray-900">Project Details</h2>
+              {data?.status === "SUBMITTED" && (
+                <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full uppercase tracking-wider">
+                  SUBMITTED
+                </span>
+              )}
+            </div>
             
             <div className="space-y-6">
               {/* Project Title & Team Name */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Project Title <span className="text-red-500">*</span>
+                    Team Name
                   </label>
                   <input
                     type="text"
-                    placeholder="Enter your project title"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Team Name</label>
-                  <input
-                    type="text"
-                    value="Team Alpha"
+                    value={dashboard?.team?.name || "Unassigned"}
                     readOnly
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-500 outline-none"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Participant Notes
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Waiting for PPT, Video uploading..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    disabled={data?.status === "SUBMITTED"}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all disabled:opacity-60"
+                  />
+                </div>
               </div>
 
-              {/* Problem Statement & GitHub Link */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Problem Statement / Track <span className="text-red-500">*</span>
+                    Presentation URL <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <select className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm appearance-none bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-gray-500">
-                      <option>Select problem statement or track</option>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <Presentation className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      ref={presentationRef}
+                      type="text"
+                      placeholder="https://docs.google.com/presentation/..."
+                      value={presentation}
+                      onChange={(e) => setPresentation(e.target.value)}
+                      disabled={data?.status === "SUBMITTED"}
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none disabled:opacity-60"
+                    />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">GitHub Repository Link</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">GitHub Repository Link <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
+                      ref={githubRef}
                       type="text"
                       placeholder="https://github.com/your-repo"
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                      value={githubLink}
+                      onChange={(e) => setGithubLink(e.target.value)}
+                      disabled={data?.status === "SUBMITTED"}
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none disabled:opacity-60"
                     />
                   </div>
                 </div>
@@ -145,156 +245,94 @@ export default function SubmissionPage() {
               {/* Short Description */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Short Description <span className="text-red-500">*</span>
+                  Project Description <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <textarea
-                    rows={3}
-                    placeholder="Describe your project in brief (max 300 words)..."
+                    ref={descriptionRef}
+                    rows={4}
+                    placeholder="Describe your project..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+                    disabled={data?.status === "SUBMITTED"}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none disabled:opacity-60"
                   />
-                  <span className="absolute bottom-3 right-3 text-xs text-gray-400">{wordCount}/300</span>
+                  <span className="absolute bottom-3 right-3 text-xs text-gray-400">{wordCount} words</span>
                 </div>
               </div>
 
-              {/* Tech Stack & Demo Video */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tech Stack / Tools Used</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., React, Node.js, MongoDB, Python, etc."
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Demo Video Link <span className="text-gray-400 font-normal">(Optional)</span></label>
-                  <div className="relative">
-                    <Video className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="https://youtu.be/your-demo"
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Upload Files */}
+              {/* Demo Video */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upload Files <span className="text-red-500">*</span>
-                </label>
-                <p className="text-xs text-gray-500 mb-3">You can upload multiple files. Max size per file: 100MB</p>
-                
-                <div className="border-2 border-dashed border-purple-200 bg-purple-50 rounded-xl p-8 text-center mb-4 hover:bg-purple-100 transition-colors cursor-pointer">
-                  <UploadCloud className="w-8 h-8 text-purple-500 mx-auto mb-3" />
-                  <p className="text-sm text-gray-700">
-                    Drag & drop files here or <button className="px-4 py-1.5 bg-purple-600 text-white text-xs font-medium rounded-lg hover:bg-purple-700 transition-colors inline-block mx-2">Browse Files</button>
-                  </p>
-                  <p className="text-xs text-gray-500 mt-2">Accepted formats: PDF, PPTX, ZIP, MP4, DOCX, PNG, JPG</p>
-                </div>
-
-                {/* Uploaded Files Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 group">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                        <Presentation className="w-5 h-5 text-orange-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Project_Presentation.pptx</p>
-                        <p className="text-xs text-gray-500">2.4 MB</p>
-                      </div>
-                    </div>
-                    <button className="p-1 hover:bg-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-all">
-                      <X className="w-4 h-4 text-gray-500" />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 group">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-red-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Technical_Documentation.pdf</p>
-                        <p className="text-xs text-gray-500">3.1 MB</p>
-                      </div>
-                    </div>
-                    <button className="p-1 hover:bg-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-all">
-                      <X className="w-4 h-4 text-gray-500" />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 group">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <Video className="w-5 h-5 text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Demo_Video.mp4</p>
-                        <p className="text-xs text-gray-500">45.6 MB</p>
-                      </div>
-                    </div>
-                    <button className="p-1 hover:bg-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-all">
-                      <X className="w-4 h-4 text-gray-500" />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 group">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                        <FileCode2 className="w-5 h-5 text-yellow-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Source_Code.zip</p>
-                        <p className="text-xs text-gray-500">12.8 MB</p>
-                      </div>
-                    </div>
-                    <button className="p-1 hover:bg-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-all">
-                      <X className="w-4 h-4 text-gray-500" />
-                    </button>
-                  </div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Demo Video Link <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <Video className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    ref={demoRef}
+                    type="text"
+                    placeholder="https://youtu.be/your-demo"
+                    value={demoVideo}
+                    onChange={(e) => setDemoVideo(e.target.value)}
+                    disabled={data?.status === "SUBMITTED"}
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none disabled:opacity-60"
+                  />
                 </div>
               </div>
 
-              {/* Confirmation */}
-              <div className="flex items-start gap-3 pt-2">
-                <div className="mt-0.5">
-                  <input type="checkbox" className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500" />
-                </div>
-                <label className="text-sm text-gray-700 cursor-pointer select-none">
-                  I confirm that all information provided is accurate and our project is original.
-                </label>
-              </div>
+              {data?.status !== "SUBMITTED" && (
+                <>
+                  <div className="flex items-start gap-3 pt-2">
+                    <div className="mt-0.5">
+                      <input 
+                        type="checkbox" 
+                        checked={confirmed}
+                        onChange={(e) => setConfirmed(e.target.checked)}
+                        className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500" 
+                      />
+                    </div>
+                    <label className="text-sm text-gray-700 cursor-pointer select-none" onClick={() => setConfirmed(!confirmed)}>
+                      I confirm that all information provided is accurate and our project is original.
+                    </label>
+                  </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-end pt-4">
-                <button className="px-6 py-2.5 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 shadow-sm">
-                  Submit Project
-                  <Send className="w-4 h-4" />
-                </button>
-              </div>
+                  {progress < 100 && (
+                    <div className="text-sm text-red-500 font-medium pb-2 text-right">
+                      Complete all deliverables before final submission
+                    </div>
+                  )}
+                  <div className="flex justify-end gap-4 pt-4">
+                    <button 
+                      onClick={() => handleSave(false)}
+                      disabled={saving}
+                      className="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+                    >
+                      Save Draft
+                    </button>
+                    <button 
+                      onClick={() => handleSave(true)}
+                      disabled={saving || !confirmed || progress < 100}
+                      className="px-6 py-2.5 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
+                    >
+                      {saving ? "Submitting..." : "Submit Final Project"}
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
           {/* Right Sidebar */}
-          <div className="w-80 space-y-6 flex-shrink-0">
-            
+          <div className="w-full lg:w-80 space-y-6 flex-shrink-0">
             {/* Checklist */}
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
               <h3 className="text-sm font-bold text-gray-900 mb-4">Submission Checklist</h3>
               <div className="space-y-3">
                 {[
-                  { label: "Project title and description", done: true },
-                  { label: "Team details", done: true },
-                  { label: "Problem statement / Track", done: true },
-                  { label: "GitHub repository link (optional)", done: true },
-                  { label: "All required files uploaded", done: true },
-                  { label: "Final submission", done: false },
+                  { label: "Project description", done: !!description },
+                  { label: "GitHub link", done: !!githubLink },
+                  { label: "Presentation link", done: !!presentation },
+                  { label: "Demo video link", done: !!demoVideo },
+                  { label: "Final submission", done: data?.status === "SUBMITTED" },
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-center gap-3">
                     {item.done ? (
@@ -312,57 +350,18 @@ export default function SubmissionPage() {
 
             {/* Submission Status */}
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-              <h3 className="text-sm font-bold text-gray-900 mb-4">Submission Status</h3>
+              <h3 className="text-sm font-bold text-gray-900 mb-4">Current Progress</h3>
               <div className="flex items-center gap-4 mb-4">
                 <div className="relative w-16 h-16 flex-shrink-0">
                   <svg className="w-16 h-16 transform -rotate-90">
                     <circle cx="32" cy="32" r="28" stroke="#e5e7eb" strokeWidth="4" fill="none" />
-                    <circle cx="32" cy="32" r="28" stroke="#7c3aed" strokeWidth="4" fill="none" strokeDasharray="175" strokeDashoffset="35" strokeLinecap="round" />
+                    <circle cx="32" cy="32" r="28" stroke="#7c3aed" strokeWidth="4" fill="none" strokeDasharray="175" strokeDashoffset={175 - (175 * progress) / 100} strokeLinecap="round" />
                   </svg>
-                  <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-gray-900">80%</div>
+                  <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-gray-900">{progress}%</div>
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-gray-900">Almost There!</p>
-                  <p className="text-xs text-gray-500 mt-1 leading-relaxed">Complete all required fields and submit your project.</p>
-                </div>
-              </div>
-              <div className="w-full bg-gray-100 rounded-full h-1.5">
-                <div className="bg-purple-600 h-1.5 rounded-full" style={{ width: '80%' }}></div>
-              </div>
-            </div>
-
-            {/* Previous Submissions */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-gray-900">Previous Submissions</h3>
-                <button className="text-xs text-purple-600 font-medium hover:underline">View All</button>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase tracking-wider">Round 1</span>
-                    <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">Submitted</span>
-                  </div>
-                  <p className="text-xs text-gray-500 flex items-center gap-1.5 mb-2">
-                    <CalendarClock className="w-3.5 h-3.5" /> May 20, 2026 at 10:30 AM
-                  </p>
-                  <button className="text-xs text-purple-600 font-medium hover:underline flex items-center gap-1">
-                    <FileCheck className="w-3.5 h-3.5" /> Download Receipt
-                  </button>
-                </div>
-
-                <div className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded uppercase tracking-wider">Prototype</span>
-                    <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">Draft</span>
-                  </div>
-                  <p className="text-xs text-gray-500 flex items-center gap-1.5 mb-2">
-                    <CalendarClock className="w-3.5 h-3.5" /> May 10, 2026 at 04:15 PM
-                  </p>
-                  <button className="text-xs text-purple-600 font-medium hover:underline flex items-center gap-1">
-                    <FileText className="w-3.5 h-3.5" /> Continue Editing
-                  </button>
+                  <p className="text-sm font-bold text-gray-900">{progress === 100 ? "Ready to Submit" : "Keep going!"}</p>
+                  <p className="text-xs text-gray-500 mt-1 leading-relaxed">Complete all required fields.</p>
                 </div>
               </div>
             </div>
@@ -372,16 +371,12 @@ export default function SubmissionPage() {
               <div className="flex items-start gap-3 mb-3">
                 <HelpCircle className="w-8 h-8 text-purple-600 flex-shrink-0" />
                 <div>
-                  <h3 className="text-sm font-bold text-purple-900 mb-1">Need help with submission?</h3>
+                  <h3 className="text-sm font-bold text-purple-900 mb-1">Need help?</h3>
                   <p className="text-xs text-purple-700 leading-relaxed">
                     Check the submission guidelines or contact our support team.
                   </p>
                 </div>
               </div>
-              <button className="w-full mt-3 py-2.5 bg-white border border-purple-200 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-100 transition-colors flex items-center justify-center gap-2">
-                View Guidelines
-                <ArrowRight className="w-4 h-4" />
-              </button>
             </div>
 
           </div>
@@ -389,7 +384,7 @@ export default function SubmissionPage() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 px-8 py-4 flex items-center justify-between text-xs text-gray-500">
+      <footer className="bg-white border-t border-gray-200 px-8 py-4 flex items-center justify-between text-xs text-gray-500 mt-auto">
         <span>© 2026 HackFlow. All rights reserved.</span>
         <div className="flex items-center gap-4">
           <button className="hover:text-gray-700">Privacy Policy</button>

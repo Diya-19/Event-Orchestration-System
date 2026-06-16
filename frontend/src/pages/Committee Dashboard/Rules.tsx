@@ -43,9 +43,9 @@ export default function RulesPage() {
   // Decoupled States
   const [rules, setRules] = useState<Rule[]>([]);
   const [teamConfig, setTeamConfig] = useState({
-    team_size: 3,
+    min_team_size: 2,
+    max_team_size: 4,
     max_per_institution: 2,
-    min_per_institution: 1,
   });
 
   // UI States
@@ -176,20 +176,20 @@ export default function RulesPage() {
 
         <div className="flex flex-wrap items-center gap-6">
           <div className="flex flex-col items-center gap-1">
-            <span className="text-xs text-gray-500">Team Size</span>
+            <span className="text-xs text-gray-500">Min Team Size</span>
             <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-2 py-1 border border-gray-200">
-              <button onClick={() => handleConfigChange('team_size', -1)} className="text-gray-400 hover:text-gray-600">-</button>
-              <span className="font-medium w-4 text-center">{teamConfig.team_size}</span>
-              <button onClick={() => handleConfigChange('team_size', 1)} className="text-gray-400 hover:text-gray-600">+</button>
+              <button onClick={() => handleConfigChange('min_team_size', -1)} className="text-gray-400 hover:text-gray-600">-</button>
+              <span className="font-medium w-4 text-center">{teamConfig.min_team_size}</span>
+              <button onClick={() => handleConfigChange('min_team_size', 1)} className="text-gray-400 hover:text-gray-600">+</button>
             </div>
           </div>
 
           <div className="flex flex-col items-center gap-1">
-            <span className="text-xs text-gray-500">Min per Institution</span>
+            <span className="text-xs text-gray-500">Max Team Size</span>
             <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-2 py-1 border border-gray-200">
-              <button onClick={() => handleConfigChange('min_per_institution', -1)} className="text-gray-400 hover:text-gray-600">-</button>
-              <span className="font-medium w-4 text-center">{teamConfig.min_per_institution}</span>
-              <button onClick={() => handleConfigChange('min_per_institution', 1)} className="text-gray-400 hover:text-gray-600">+</button>
+              <button onClick={() => handleConfigChange('max_team_size', -1)} className="text-gray-400 hover:text-gray-600">-</button>
+              <span className="font-medium w-4 text-center">{teamConfig.max_team_size}</span>
+              <button onClick={() => handleConfigChange('max_team_size', 1)} className="text-gray-400 hover:text-gray-600">+</button>
             </div>
           </div>
 

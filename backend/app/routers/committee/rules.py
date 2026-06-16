@@ -15,10 +15,9 @@ router = APIRouter()
 # --- PYDANTIC SCHEMAS ---
 
 class TeamSettingsPayload(BaseModel):
-    team_size: int
+    min_team_size: int
+    max_team_size: int
     max_per_institution: int
-    min_per_institution: int
-    
 
 class CustomRulePayload(BaseModel):
     title: str
@@ -38,17 +37,16 @@ class CustomRuleResponse(CustomRulePayload):
 def get_team_settings(event_id: UUID, db: Session = Depends(get_db)):
     settings = db.query(EventTeamSettings).filter(EventTeamSettings.event_id == event_id).first()
     if not settings:
-        # Return defaults if none exist yet
-        return {"team_size": 3, "min_per_institution": 1, "max_per_institution": 2}
+        return {"min_team_size": 2, "max_team_size": 4, "max_per_institution": 2}
     return settings
 
 @router.put("/{event_id}/team-settings")
 def update_team_settings(event_id: UUID, body: TeamSettingsPayload, db: Session = Depends(get_db)):
     settings = db.query(EventTeamSettings).filter(EventTeamSettings.event_id == event_id).first()
     if settings:
-        settings.team_size = body.team_size
+        settings.min_team_size = body.min_team_size
+        settings.max_team_size = body.max_team_size
         settings.max_per_institution = body.max_per_institution
-        settings.min_per_institution = body.min_per_institution
     else:
         settings = EventTeamSettings(event_id=event_id, **body.model_dump())
         db.add(settings)

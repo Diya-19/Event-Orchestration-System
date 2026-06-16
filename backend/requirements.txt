@@ -17,6 +17,7 @@ redis>=5.0.3
 
 # --- Added for LLM Integration ---
 google-generativeai>=0.5.2
+groq>=1.4.0
 
 # --- Added for Email Delivery ---
 sendgrid>=6.11.0
