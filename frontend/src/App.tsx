@@ -15,7 +15,7 @@ import Communication from "./pages/Committee Dashboard/Communication";
 import Scoring from "./pages/Committee Dashboard/Scoring";
 import Results from "./pages/Committee Dashboard/Results";
 import JudgeManagement from "./pages/Committee Dashboard/JudgeManagent";
-import ActivityLogs from "./pages/Committee Dashboard/ActivityLogs"; 
+import ActivityLogs from "./pages/Committee Dashboard/ActivityLogs";
 
 // Judge Pages
 import JudgeSidebar from "./pages/Judge/sidebar";
@@ -29,6 +29,12 @@ import ParticipantChat from "./pages/participant/chat";
 import SubmissionPage from "./pages/participant/submission";
 import HelpPage from "./pages/participant/help"; 
 import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
+
+// Travel Pages ✅ ADDED
+import TravelSidebar from "./pages/travel/Sidebar";
+import TravelDashboard from "./pages/travel/Dashboard";
+import TravelNotifications from "./pages/travel/Notifications";
+import TravelEmergency from "./pages/travel/Emergency";
 
 // TEMP AUTH BYPASS
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -61,7 +67,7 @@ export default function App() {
           <Route path="scoring" element={<Scoring />} />
           <Route path="results" element={<Results />} />
           <Route path="judge-management" element={<JudgeManagement />} />
-          <Route path="activity-logs" element={<ActivityLogs />} /> {/* ✅ ADDED */}
+          <Route path="activity-logs" element={<ActivityLogs />} />
         </Route>
 
         {/* JUDGE DASHBOARD */}
@@ -101,6 +107,20 @@ export default function App() {
           <Route path="chat" element={<ParticipantChat />} />
           <Route path="submission" element={<SubmissionPage />} />
           <Route path="support" element={<HelpPage />} />
+        </Route>
+
+        {/* TRAVEL & LOGISTICS ✅ ADDED */}
+        <Route
+          path="/travel"
+          element={
+            <RequireAuth>
+              <TravelSidebar />
+            </RequireAuth>
+          }
+        >
+          <Route index element={<TravelDashboard />} />
+          <Route path="notifications" element={<TravelNotifications />} />
+          <Route path="emergency" element={<TravelEmergency />} />
         </Route>
 
         {/* DEFAULT REDIRECT */}
