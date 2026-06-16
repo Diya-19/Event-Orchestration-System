@@ -16,6 +16,7 @@ import Scoring from "./pages/Committee Dashboard/Scoring";
 import Results from "./pages/Committee Dashboard/Results";
 import JudgeManagement from "./pages/Committee Dashboard/JudgeManagent";
 import ActivityLogs from "./pages/Committee Dashboard/ActivityLogs";
+import TravelManagement from "./pages/Committee Dashboard/TravelManagement"; // ✅ ADDED
 
 // Judge Pages
 import JudgeSidebar from "./pages/Judge/sidebar";
@@ -30,7 +31,7 @@ import SubmissionPage from "./pages/participant/submission";
 import HelpPage from "./pages/participant/help"; 
 import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 
-// Travel Pages ✅ ADDED
+// Travel Pages
 import TravelSidebar from "./pages/travel/Sidebar";
 import TravelDashboard from "./pages/travel/Dashboard";
 import TravelNotifications from "./pages/travel/Notifications";
@@ -68,6 +69,7 @@ export default function App() {
           <Route path="results" element={<Results />} />
           <Route path="judge-management" element={<JudgeManagement />} />
           <Route path="activity-logs" element={<ActivityLogs />} />
+          <Route path="travel-management" element={<TravelManagement />} /> {/* ✅ ADDED */}
         </Route>
 
         {/* JUDGE DASHBOARD */}
@@ -109,7 +111,7 @@ export default function App() {
           <Route path="support" element={<HelpPage />} />
         </Route>
 
-        {/* TRAVEL & LOGISTICS ✅ ADDED */}
+        {/* TRAVEL & LOGISTICS */}
         <Route
           path="/travel"
           element={
