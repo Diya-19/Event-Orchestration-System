@@ -13,7 +13,8 @@ import {
   CalendarDays,
   Send,
   Gavel,
-  Activity
+  Activity,
+  Plane // ✅ ADDED
 } from "lucide-react";
 
 import {
@@ -38,13 +39,14 @@ const NAV = [
   { to: "/dashboard/scoring", label: "Scoring", icon: <FolderKanban size={18} /> },
   { to: "/dashboard/results", label: "Results", icon: <Trophy size={18} /> },
   { to: "/dashboard/activity-logs", label: "Activity Logs", icon: <Activity size={18} /> },
+  { to: "/dashboard/travel-management", label: "Travel Management", icon: <Plane size={18} /> }, // ✅ ADDED
   { to: "/dashboard/rules", label: "Rules", icon: <Shield size={18} /> },
   { to: "/dashboard/team-formation", label: "Team Formation", icon: <Sparkles size={18} /> }
 ];
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
-  const location = useLocation(); // ✅ Added to detect current page
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const eventId = searchParams.get("event_id") ?? "";
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -62,6 +64,7 @@ export default function DashboardLayout() {
     if (path.includes("judge-management")) return { title: "Judge Management", subtitle: "Assign judges and manage evaluations" };
     if (path.includes("rules")) return { title: "Rules", subtitle: "Configure event rules and policies" };
     if (path.includes("multiple-events")) return { title: "Multiple Events", subtitle: "Manage all your hackathons" };
+    if (path.includes("travel-management")) return { title: "Travel Management", subtitle: "Manage and review travel requests for Round 3 qualified teams" }; // ✅ ADDED
     
     // Default
     return { title: "Dashboard", subtitle: "Overview of event management" };
