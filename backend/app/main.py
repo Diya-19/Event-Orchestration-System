@@ -10,7 +10,8 @@ from app.routers.committee import (
     participants,
     dashboard,
     rules,
-    teams
+    teams,
+    results
 )
 
 # Portal Routers
@@ -43,6 +44,7 @@ app.include_router(teams.router, prefix="/api/events/{event_id}/teams", tags=["t
 # app.include_router(evaluators.router, prefix="/api/evaluators", tags=["Evaluators"])
 # app.include_router(scores.router, prefix="/api/scores", tags=["Scores"])
 app.include_router(rules.router, prefix="/api/events", tags=["rules"])
+app.include_router( results.router, prefix="/api/results", tags=["Results"])
 
 # Public/Portal API
 from app.routers.portal import participant as portal_participant
