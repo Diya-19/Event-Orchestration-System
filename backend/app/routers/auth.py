@@ -6,10 +6,10 @@ from passlib.context import CryptContext
 
 from app.db import get_db
 from app.models.committee_user import CommitteeUser
+from app.models.evaluator import Evaluator
+from app.models.participant import Participant
 from app.services.token_service import create_access_token, verify_token
-
 from app.auth import require_committee
-
 # Re-export under the legacy name so Stage 1 routers that still reference
 # get_current_committee_user continue to work without modification.
 get_current_committee_user = require_committee
@@ -66,11 +66,60 @@ def signup(body: SignupRequest, db: Session = Depends(get_db)):
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(CommitteeUser).filter(CommitteeUser.email == body.email).first()
+
+    print("EMAIL:", body.email)
+    print("PASSWORD LENGTH:", len(body.password))
+
     if not user or not _pwd.verify(body.password, user.hashed_password):
-        # same message for both cases — avoids email enumeration
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
     token = create_access_token({"sub": f"committee:{user.id}", "email": user.email})
+    return TokenResponse(access_token=token)
+
+@router.get("/verify-judge", response_model=TokenResponse)
+def verify_judge(token: str, db: Session = Depends(get_db)):
+    evaluator = db.query(Evaluator).filter(Evaluator.access_token == token).first()
+    if not evaluator:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired invitation link",
+        )
+    # Return the raw token exactly as expected by the require_evaluator dependency
+    return TokenResponse(access_token=token)
+
+@router.post("/participant-login", response_model=TokenResponse)
+def participant_login(body: LoginRequest, db: Session = Depends(get_db)):
+
+    print("EMAIL RECEIVED:", body.email)
+    print("PASSWORD RECEIVED:", body.password)
+
+    participant = db.query(Participant).filter(
+        Participant.email == body.email
+    ).first()
+
+    print("PARTICIPANT FOUND:", participant)
+
+    if participant:
+        print("DB TOKEN:", participant.portal_token)
+
+    if not participant or participant.portal_token != body.password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+        )
+
+    token = create_access_token({
+        "sub": f"participant:{participant.id}",
+        "email": participant.email,
+        "role": "participant"
+    })
+
+    return TokenResponse(access_token=token)
+    token = create_access_token({
+        "sub": f"participant:{participant.id}",
+        "email": participant.email,
+        "role": "participant"
+    })
     return TokenResponse(access_token=token)

@@ -23,6 +23,8 @@ import JudgeSidebar from "./pages/Judge/sidebar";
 import JudgeDashboard from "./pages/Judge/dashboard";
 import MyEvaluation from "./pages/Judge/Evaluation";
 import EvaluationPage from "./pages/Judge/EvaluationPage";
+import JudgeDeadlines from "./pages/Judge/Deadlines";
+import JudgeProfile from "./pages/Judge/Profile";
 
 // Participant Pages
 import ParticipantSidebar from "./pages/participant/sidebar";
@@ -30,6 +32,7 @@ import ParticipantChat from "./pages/participant/chat";
 import SubmissionPage from "./pages/participant/submission";
 import HelpPage from "./pages/participant/help"; 
 import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
+import TeamPage from "./pages/participant/TeamPage";
 
 // Travel Pages
 import TravelSidebar from "./pages/travel/Sidebar";
@@ -39,6 +42,33 @@ import TravelEmergency from "./pages/travel/Emergency";
 
 // TEMP AUTH BYPASS
 function RequireAuth({ children }: { children: JSX.Element }) {
+  return children;
+}
+
+// JUDGE AUTH (With DEV_MODE Support)
+function RequireJudgeAuth({ children }: { children: JSX.Element }) {
+  const isDev = import.meta.env.VITE_DEV_MODE === "true";
+  console.log("DEV MODE =", import.meta.env.VITE_DEV_MODE, "isDev =", isDev);
+  
+  if (isDev) {
+    return children;
+  }
+  
+  const token = localStorage.getItem("evaluator_token");
+  if (!token) {
+    // If no token exists, they shouldn't access the judge pages. 
+    // Redirecting to login as fallback, or show unauthorized.
+    return <Navigate to="/login" replace />; 
+  }
+  return children;
+}
+
+// PARTICIPANT AUTH
+function RequireParticipantAuth({ children }: { children: JSX.Element }) {
+  const token = localStorage.getItem("participant_token");
+  if (!token) {
+    return <Navigate to="/login" replace />; 
+  }
   return children;
 }
 
@@ -76,23 +106,43 @@ export default function App() {
         <Route
           path="/judge"
           element={
-            <RequireAuth>
+            <RequireJudgeAuth>
               <div className="flex min-h-screen bg-gray-50">
                 <JudgeSidebar />
                 <div className="flex-1 overflow-y-auto">
                   <Outlet />
                 </div>
               </div>
-            </RequireAuth>
+            </RequireJudgeAuth>
           }
         >
           <Route index element={<JudgeDashboard />} />
           <Route path="evaluations" element={<MyEvaluation />} />
           <Route path="evaluation/:teamId" element={<EvaluationPage />} />
+          <Route path="deadlines" element={<JudgeDeadlines />} />
+          <Route path="profile" element={<JudgeProfile />} />
         </Route>
 
         {/* PARTICIPANT DASHBOARD */}
         <Route
+        path="/participant"
+        element={
+        <RequireParticipantAuth>
+          <div className="flex min-h-screen bg-gray-50">
+            <ParticipantSidebar />
+            <div className="flex-1 overflow-y-auto">
+              <Outlet />
+              </div>
+              </div>
+              </RequireParticipantAuth>
+            }
+            >
+              <Route index element={<ParticipantDashboard />} />
+              <Route path="chat" element={<ParticipantChat />} />
+              <Route path="submission" element={<SubmissionPage />} />
+              <Route path="support" element={<HelpPage />} />
+              <Route path="team" element={<TeamPage />} />
+              </Route>
           path="/participant"
           element={
             <RequireAuth>

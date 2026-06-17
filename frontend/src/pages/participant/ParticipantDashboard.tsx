@@ -1,5 +1,7 @@
 // src/pages/participant/ParticipantDashboard.tsx
 
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Users,
   Flag,
@@ -7,11 +9,60 @@ import {
   Calendar,
   FileText,
   ClipboardCheck,
-  Trophy,
   CheckCircle,
+  AlertTriangle,
+  Check
 } from "lucide-react";
+import { participantService, DashboardResponse, SubmissionResponse, TeamDetailsResponse } from "../../lib/participantService";
+import SubmissionStatusBadge from "../../components/SubmissionStatusBadge";
 
 export default function ParticipantDashboard() {
+  const [data, setData] = useState<DashboardResponse | null>(null);
+  const [teamDetails, setTeamDetails] = useState<TeamDetailsResponse | null>(null);
+  const [submission, setSubmission] = useState<SubmissionResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    Promise.all([
+      participantService.getDashboard(),
+      participantService.getTeamDetails(),
+      participantService.getSubmission()
+    ])
+    .then(([dashRes, teamRes, subRes]) => {
+      setData(dashRes);
+      setTeamDetails(teamRes);
+      setSubmission(subRes);
+    })
+    .catch((err) => setError(err.message || "Failed to load dashboard"))
+    .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <div className="p-6 text-gray-500">Loading dashboard...</div>;
+  }
+
+  if (error) {
+    return <div className="p-6 text-red-500">{error}</div>;
+  }
+
+  if (!data) return null;
+
+  // Calculate progress and deliverables
+  let progress = 0;
+  const completed: string[] = [];
+  const pending: { name: string; param: string }[] = [];
+
+  if (submission?.github_link) { progress += 25; completed.push("GitHub Repository"); } else { pending.push({ name: "GitHub Repository", param: "github" }); }
+  if (submission?.project_description) { progress += 25; completed.push("Project Description"); } else { pending.push({ name: "Project Description", param: "description" }); }
+  if (submission?.presentation_url) { progress += 25; completed.push("Presentation"); } else { pending.push({ name: "Presentation", param: "presentation" }); }
+  if (submission?.demo_video_url) { progress += 25; completed.push("Demo Video"); } else { pending.push({ name: "Demo Video", param: "demo" }); }
+
+  let statusText = "DRAFT";
+  if (submission?.status) {
+    statusText = submission.status;
+  }
+
   return (
     <div className="p-6 bg-[#f8f6fc] min-h-screen">
       {/* Welcome Card */}
@@ -22,19 +73,19 @@ export default function ParticipantDashboard() {
 
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            Welcome to HackFlow 2026! 🎉
+            Welcome to {data.event?.name || "HackFlow"}! 🎉
           </h1>
 
           <p className="text-gray-500 mt-2">
             You have been assigned to
           </p>
 
-          <p className="text-purple-600 font-semibold text-lg">
-            Team Alpha
-          </p>
+          <Link to="/participant/team" className="text-purple-600 font-semibold text-lg hover:underline">
+            {data.team?.name || "No Team Assigned"}
+          </Link>
 
           <p className="text-gray-500 text-sm mt-1">
-            We are excited to have you on board.
+            We are excited to have you on board, {data.participant?.name}!
           </p>
         </div>
       </div>
@@ -46,28 +97,15 @@ export default function ParticipantDashboard() {
             Team Members
           </h2>
 
-          <button className="bg-purple-100 text-purple-600 px-4 py-2 rounded-full text-sm font-medium hover:bg-purple-200 transition">
+          <Link to="/participant/team" className="bg-purple-100 text-purple-600 px-4 py-2 rounded-full text-sm font-medium hover:bg-purple-200 transition">
             View Team
-          </button>
+          </Link>
         </div>
 
         <div className="flex gap-10 flex-wrap">
-          {[
-            {
-              name: "Rahul",
-              role: "Frontend",
-            },
-            {
-              name: "Disha",
-              role: "Backend",
-            },
-            {
-              name: "Amit",
-              role: "AI/ML",
-            },
-          ].map((member, index) => (
+          {teamDetails?.members.map((member) => (
             <div
-              key={index}
+              key={member.id}
               className="flex items-center gap-3"
             >
               <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
@@ -81,13 +119,15 @@ export default function ParticipantDashboard() {
                 <p className="font-medium text-sm">
                   {member.name}
                 </p>
-
                 <p className="text-xs text-gray-500">
-                  {member.role}
+                  {member.skills?.[0] || "Member"}
                 </p>
               </div>
             </div>
           ))}
+          {(!teamDetails?.members || teamDetails.members.length === 0) && (
+            <p className="text-sm text-gray-500">No team members found.</p>
+          )}
         </div>
       </div>
 
@@ -110,7 +150,7 @@ export default function ParticipantDashboard() {
                   Theme
                 </p>
                 <p className="text-sm font-medium">
-                  Intelligent Event Orchestration System
+                  {data.event?.theme || <span className="text-gray-400 italic font-normal">Not configured by committee</span>}
                 </p>
               </div>
             </div>
@@ -124,8 +164,8 @@ export default function ParticipantDashboard() {
                 <p className="text-xs text-gray-500">
                   Current Stage
                 </p>
-                <p className="text-sm font-medium">
-                  Round 2 - Development
+                <p className="text-sm font-medium uppercase">
+                  {data.event?.current_stage || "Pending"}
                 </p>
               </div>
             </div>
@@ -140,7 +180,7 @@ export default function ParticipantDashboard() {
                   Duration
                 </p>
                 <p className="text-sm font-medium">
-                  May 18 - May 31
+                  {data.event?.start_date} - {data.event?.end_date}
                 </p>
               </div>
             </div>
@@ -155,7 +195,7 @@ export default function ParticipantDashboard() {
                   Submission Deadline
                 </p>
                 <p className="text-sm font-medium">
-                  May 31, 11:59 PM
+                  {data.event?.submission_deadline || <span className="text-gray-400 italic font-normal">Not configured by committee</span>}
                 </p>
               </div>
             </div>
@@ -170,7 +210,7 @@ export default function ParticipantDashboard() {
                   Evaluation Starts
                 </p>
                 <p className="text-sm font-medium">
-                  June 1, 2026
+                  {data.event?.evaluation_start || <span className="text-gray-400 italic font-normal">Not configured by committee</span>}
                 </p>
               </div>
             </div>
@@ -178,153 +218,104 @@ export default function ParticipantDashboard() {
         </div>
 
         {/* Your Info */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h2 className="text-purple-600 font-semibold mb-6">
-            Your Info
-          </h2>
+        <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col justify-between">
+          <div>
+            <h2 className="text-purple-600 font-semibold mb-6">
+              Your Info
+            </h2>
 
-          <div className="space-y-5">
-            <div className="flex gap-3">
-              <Users
-                className="text-purple-400"
-                size={18}
-              />
+            <div className="space-y-5 mb-6">
+              <div className="flex gap-3">
+                <Users
+                  className="text-purple-400"
+                  size={18}
+                />
+                <div>
+                  <p className="text-xs text-gray-500">
+                    Team
+                  </p>
+                  <p className="text-sm font-medium">
+                    {data.team?.name || "Unassigned"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <FileText
+                  className="text-purple-400"
+                  size={18}
+                />
+                <div>
+                  <p className="text-xs text-gray-500">
+                    Registration ID
+                  </p>
+                  <p className="text-sm font-medium">
+                    {data.team?.registration_id || "Pending"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Calendar
+                  className="text-purple-400"
+                  size={18}
+                />
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">
+                    Submission Status
+                  </p>
+                  <SubmissionStatusBadge status={statusText} />
+                </div>
+              </div>
+
+              {/* Progress Bar */}
               <div>
-                <p className="text-xs text-gray-500">
-                  Team
-                </p>
-                <p className="text-sm font-medium">
-                  Team Alpha
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <FileText
-                className="text-purple-400"
-                size={18}
-              />
-              <div>
-                <p className="text-xs text-gray-500">
-                  Registration ID
-                </p>
-                <p className="text-sm font-medium">
-                  TF26-1T-045H
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <Calendar
-                className="text-purple-400"
-                size={18}
-              />
-              <div>
-                <p className="text-xs text-gray-500">
-                  Submission Status
-                </p>
-                <p className="text-sm font-medium">
-                  In Progress
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-500">
-                  Current Progress
-                </span>
-
-                <span className="font-medium">
-                  40%
-                </span>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-500">
+                    Current Progress
+                  </span>
+                  <span className="font-medium">
+                    {progress}%
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-2 bg-purple-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
+                </div>
               </div>
 
-              <div className="w-full h-2 bg-gray-200 rounded-full">
-                <div className="w-[40%] h-2 bg-purple-500 rounded-full"></div>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <ClipboardCheck
-                className="text-purple-400"
-                size={18}
-              />
-              <div>
-                <p className="text-xs text-gray-500">
-                  Pending Deliverables
-                </p>
-
-                <ul className="text-sm font-medium list-disc ml-4">
-                  <li>Presentation</li>
-                  <li>Prototype</li>
-                </ul>
+              {/* Pending Deliverables */}
+              <div className="flex gap-3">
+                <ClipboardCheck
+                  className="text-purple-400 mt-0.5"
+                  size={18}
+                />
+                <div>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Deliverables
+                  </p>
+                  <ul className="text-sm space-y-1">
+                    {completed.map((p, idx) => (
+                      <li key={`c-${idx}`} className="flex items-center gap-2 text-green-600">
+                        <Check size={16} /> <span>{p}</span>
+                      </li>
+                    ))}
+                    {pending.map((p, idx) => (
+                      <li key={`p-${idx}`} className="flex items-center gap-2 text-orange-500">
+                        <AlertTriangle size={16} /> 
+                        <Link to={`/participant/submission?focus=${p.param}`} className="hover:underline">
+                          {p.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Timeline */}
-      <div className="bg-white rounded-2xl shadow-sm p-6">
-        <h2 className="text-purple-600 font-semibold uppercase text-sm mb-8">
-          Event Timeline
-        </h2>
-
-        <div className="relative flex justify-between items-start">
-          <div className="absolute top-5 left-0 w-full border-t border-dashed border-gray-300"></div>
-
-          {[
-            {
-              icon: CheckCircle,
-              color: "bg-green-500",
-              title: "Team Assigned",
-              date: "May 18, 2025",
-            },
-            {
-              icon: CheckCircle,
-              color: "bg-green-500",
-              title: "Requirements Viewed",
-              date: "May 18, 2025",
-            },
-            {
-              icon: Calendar,
-              color: "bg-purple-500",
-              title: "Submission Deadline",
-              date: "May 31, 2025",
-            },
-            {
-              icon: ClipboardCheck,
-              color: "bg-gray-300",
-              title: "Evaluation",
-              date: "Jun 1 - Jun 5, 2025",
-            },
-            {
-              icon: Trophy,
-              color: "bg-gray-300",
-              title: "Results",
-              date: "Jun 6, 2025",
-            },
-          ].map((item, index) => (
-            <div
-              key={index}
-              className="relative z-10 flex flex-col items-center text-center w-32"
-            >
-              <div
-                className={`w-10 h-10 rounded-full ${item.color} flex items-center justify-center text-white`}
-              >
-                <item.icon size={18} />
-              </div>
-
-              <p className="mt-3 text-sm font-semibold">
-                {item.title}
-              </p>
-
-              <p className="text-xs text-gray-500 mt-1">
-                {item.date}
-              </p>
-            </div>
-          ))}
+          <Link to="/participant/submission" className="w-full mt-4 py-2 bg-purple-100 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-200 transition text-center block">
+            {statusText === "SUBMITTED" ? "View Submission" : statusText === "READY" ? "Final Submit" : "Continue Submission"}
+          </Link>
         </div>
       </div>
     </div>
