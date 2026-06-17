@@ -1,8 +1,10 @@
 // frontend/src/App.tsx
 
+import React, { useState, useEffect } from "react";
+import { api } from "./lib/api";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
-
+import TeamPage from "./pages/participant/TeamPage";
 // Committee Dashboard Pages
 import DashboardLayout from "./pages/Committee Dashboard/Sidebar";
 import OverviewPage from "./pages/Committee Dashboard/Dashboard";
@@ -31,14 +33,38 @@ import SubmissionPage from "./pages/participant/submission";
 import HelpPage from "./pages/participant/help"; 
 import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 
-// Travel Pages
-import TravelSidebar from "./pages/travel/Sidebar";
+// Travel Pages ✅ ADDED
 import TravelDashboard from "./pages/travel/Dashboard";
 import TravelNotifications from "./pages/travel/Notifications";
 import TravelQueries from "./pages/travel/TravelQueries";
 
 // TEMP AUTH BYPASS
 function RequireAuth({ children }: { children: JSX.Element }) {
+  return children;
+}
+
+function RequireRound3({ children }: { children: JSX.Element }) {
+  const [isQualified, setIsQualified] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const fetchQualification = async () => {
+      try {
+        const res = await api.get("/api/participant/dashboard");
+        // Safe check for the nested attribute
+        if (res.data?.team?.is_qualified_round_3) {
+          setIsQualified(true);
+        } else {
+          setIsQualified(false);
+        }
+      } catch (err) {
+        setIsQualified(false);
+      }
+    };
+    fetchQualification();
+  }, []);
+
+  if (isQualified === null) return <div>Loading...</div>;
+  if (!isQualified) return <Navigate to="/participant" replace />;
   return children;
 }
 
@@ -109,20 +135,13 @@ export default function App() {
           <Route path="chat" element={<ParticipantChat />} />
           <Route path="submission" element={<SubmissionPage />} />
           <Route path="support" element={<HelpPage />} />
-        </Route>
-
-        {/* TRAVEL & LOGISTICS */}
-        <Route
-          path="/travel"
-          element={
-            <RequireAuth>
-              <TravelSidebar />
-            </RequireAuth>
-          }
-        >
-          <Route index element={<TravelDashboard />} />
-          <Route path="notifications" element={<TravelNotifications />} />
-          <Route path="queries" element={<TravelQueries />} />
+          <Route path="team" element={<TeamPage />} />
+          
+          {/* TRAVEL ROUTES */}
+          <Route element={<RequireRound3><Outlet /></RequireRound3>}>
+            <Route path="travel" element={<TravelDashboard />} />
+            <Route path="notifications" element={<TravelNotifications />} />
+          </Route>
         </Route>
 
         {/* DEFAULT REDIRECT */}

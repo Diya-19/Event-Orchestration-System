@@ -1,14 +1,17 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { clearParticipantToken } from "../../lib/auth";
+import { useEffect, useState } from "react";
+import { api } from "../../lib/api";
 import {
   LayoutDashboard,
   MessageSquare,
   FileText,
   Headphones,
+  Plane,
   LogOut,
 } from "lucide-react";
 
-const menuItems = [
+const baseMenuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/participant" },
   { icon: MessageSquare, label: "Chat", path: "/participant/chat" },
   { icon: FileText, label: "Submission", path: "/participant/submission" },
@@ -18,9 +21,36 @@ const menuItems = [
 export default function ParticipantSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [menuItems, setMenuItems] = useState(baseMenuItems);
 
-  // ✅ FIXED: Only highlights the exact current route
+  useEffect(() => {
+    const fetchQualification = async () => {
+      try {
+        const res = await api.get("/api/participant/dashboard");
+        console.log("Dashboard response:", res.data);
+        console.log("Travel qualification:", res.data.team?.is_qualified_round_3);
+        
+        if (res.data.team?.is_qualified_round_3) {
+          setMenuItems([
+            ...baseMenuItems,
+            { icon: Plane, label: "Travel & Logistics", path: "/participant/travel" }
+          ]);
+        }
+      } catch (err) {
+        console.error("Error fetching qualification for travel", err);
+      }
+    };
+    fetchQualification();
+  }, []);
+
+  // ✅ FIXED: Only highlights the exact current route, but groups travel routes together
  const isActive = (path: string) => {
+  if (path === "/participant/travel") {
+    return (
+      location.pathname.startsWith("/participant/travel") ||
+      location.pathname.startsWith("/participant/notifications")
+    );
+  }
   return location.pathname === path;
 };
 
