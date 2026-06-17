@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Users,
   UserPlus,
@@ -8,37 +9,68 @@ import {
 } from "lucide-react";
 
 export default function CurrentEvent() {
-  const stats = [
-    {
-      title: "Total Teams",
-      value: "128",
-      change: "↑ 12% from yesterday",
-      icon: <Users size={22} />,
-      color: "bg-purple-100 text-purple-600",
-    },
-    {
-      title: "Registered Participants",
-      value: "512",
-      change: "↑ 18% from yesterday",
-      icon: <UserPlus size={22} />,
-      color: "bg-green-100 text-green-600",
-    },
-    {
-      title: "Submissions",
-      value: "96",
-      change: "↑ 21% submitted",
-      icon: <FileText size={22} />,
-      color: "bg-red-100 text-red-600",
-    },
-    {
-      title: "Evaluations Completed",
-      value: "54",
-      change: "↑ 56% completed",
-      icon: <CheckSquare size={22} />,
-      color: "bg-blue-100 text-blue-600",
-    },
-  ];
+  const [dashboard, setDashboard] = useState<any>(null);
+const [loading, setLoading] = useState(true);
 
+useEffect(() => {
+  const fetchDashboard = async () => {
+    try {
+      const token = localStorage.getItem("committee_token");
+      // console.log("TOKEN:", token);
+
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/dashboard/dashboard?event_id=bdb62201-3b2b-4cfc-9396-a8fa2a41ab0d",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      // console.log(data);
+
+      setDashboard(data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchDashboard();
+}, []);
+const stats = [
+  {
+    title: "Total Teams",
+    value: dashboard?.total_teams ?? 0,
+    change: "Teams Registered",
+    icon: <Users size={22} />,
+    color: "bg-purple-100 text-purple-600",
+  },
+  {
+    title: "Registered Participants",
+    value: dashboard?.registered_participants ?? 0,
+    change: "Participants",
+    icon: <UserPlus size={22} />,
+    color: "bg-green-100 text-green-600",
+  },
+  {
+    title: "Submissions",
+    value: dashboard?.submissions ?? 0,
+    change: "Submissions Received",
+    icon: <FileText size={22} />,
+    color: "bg-red-100 text-red-600",
+  },
+  {
+    title: "Evaluations Completed",
+    value: dashboard?.evaluation_progress?.submitted ?? 0,
+    change: `Out of ${dashboard?.evaluation_progress?.total ?? 0} Teams`,
+    icon: <CheckSquare size={22} />,
+    color: "bg-blue-100 text-blue-600",
+  },
+];
   const timeline = [
     {
       title: "Registration Opened",
@@ -80,12 +112,19 @@ export default function CurrentEvent() {
     { name: "Other", teams: 8, color: "bg-gray-100 text-gray-600" },
   ];
 
+  if (loading) {
+  return (
+    <div className="p-6">
+      Loading dashboard...
+    </div>
+  );
+}
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <h1 className="text-2xl font-bold text-gray-800 mb-6">
-        Current Event
-      </h1>
+        {dashboard?.event?.name || "Current Event"}
+        </h1>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
@@ -213,7 +252,9 @@ export default function CurrentEvent() {
               </svg>
 
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <h3 className="text-4xl font-bold">96</h3>
+                <h3 className="text-4xl font-bold">
+                  {dashboard?.submissions ?? 0}
+                  </h3>
                 <p className="text-sm text-gray-500">Total Submissions</p>
               </div>
             </div>
