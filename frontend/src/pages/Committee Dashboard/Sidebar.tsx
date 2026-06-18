@@ -41,7 +41,8 @@ const NAV = [
   { to: "/dashboard/activity-logs", label: "Activity Logs", icon: <Activity size={18} /> },
   { to: "/dashboard/travel-management", label: "Travel Management", icon: <Plane size={18} /> },
   { to: "/dashboard/rules", label: "Rules", icon: <Shield size={18} /> },
-  { to: "/dashboard/team-formation", label: "Team Formation", icon: <Sparkles size={18} /> }
+  { to: "/dashboard/team-formation", label: "Team Formation", icon: <Sparkles size={18} /> },
+  { to: "/dashboard/travel-logistics", label: "Travel & Logistics", icon: <Plane size={18} />}
 ];
 
 export default function DashboardLayout() {
@@ -64,7 +65,8 @@ export default function DashboardLayout() {
     if (path.includes("judge-management")) return { title: "Judge Management", subtitle: "Assign judges and manage evaluations" };
     if (path.includes("rules")) return { title: "Rules", subtitle: "Configure event rules and policies" };
     if (path.includes("multiple-events")) return { title: "Multiple Events", subtitle: "Manage all your hackathons" };
-    if (path.includes("travel-management")) return { title: "Travel Management", subtitle: "Manage and review travel requests for Round 3 qualified teams" };
+    if (path.includes("travel-management")) return { title: "Travel Management", subtitle: "Manage and review travel requests for Round 3 qualified teams" }; // ✅ ADDED
+    if (path.includes("travel-logistics")) return { title: "Travel & Logistics Management", subtitle: "Manage travel details, hotel accommodations, event schedules and reimbursements"};
     
     // Default
     return { title: "Dashboard", subtitle: "Overview of event management" };
