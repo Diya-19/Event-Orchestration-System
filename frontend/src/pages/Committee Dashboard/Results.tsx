@@ -1,3 +1,4 @@
+import { useSearchParams } from "react-router-dom";
 import {
   Trophy,
   Users,
@@ -7,6 +8,7 @@ import {
   Share2,
   ArrowRight,
 } from "lucide-react";
+
 
 const leaderboard = [
   { rank: 4, team: "DevDynamos", score: 84.1, prize: "₹15,000" },
@@ -40,6 +42,23 @@ const winners = [
 ];
 
 export default function Results() {
+  const [searchParams] = useSearchParams();
+  const eventId = searchParams.get("event_id") ?? "";
+
+  console.log("Results Event ID:", eventId);
+
+  const handleDownloadCertificates = () => {
+    if (!eventId) {
+      alert("No event selected");
+      return;
+    }
+
+    window.open(
+      `http://127.0.0.1:8000/api/results/download-all-certificates/${eventId}`,
+      "_blank"
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
@@ -313,7 +332,7 @@ export default function Results() {
                 <Download size={18} />
               </button>
 
-              <button className="border rounded-xl p-4 flex justify-between items-center hover:bg-gray-50">
+              <button onClick={handleDownloadCertificates} className="border rounded-xl p-4 flex justify-between items-center hover:bg-gray-50">
                 <div>
                   <h4 className="font-medium">
                     Participation Certificate
