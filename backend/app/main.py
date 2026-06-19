@@ -11,13 +11,15 @@ from app.routers.committee import (
     dashboard,
     rules,
     teams,
-    results
+    results,
+    travel_logistics
 )
 
 # Portal Routers
 # from app.routers.portal import participant as portal_participant
 # from app.routers.portal import evaluator as portal_evaluator
 from app.routers.portal import judge, judge_evaluations
+from app.routers.committee import travel_logistics
 
 app = FastAPI(title="Event Orchestration API", version="1.0.0")
 
@@ -45,6 +47,7 @@ app.include_router(teams.router, prefix="/api/events/{event_id}/teams", tags=["t
 # app.include_router(scores.router, prefix="/api/scores", tags=["Scores"])
 app.include_router(rules.router, prefix="/api/events", tags=["rules"])
 app.include_router( results.router, prefix="/api/results", tags=["Results"])
+app.include_router( travel_logistics.router, prefix="/api/travel-logistics", tags=["Travel Logistics"])
 
 # Public/Portal API
 from app.routers.portal import participant as portal_participant
