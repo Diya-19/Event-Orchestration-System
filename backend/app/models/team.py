@@ -2,7 +2,7 @@ import uuid
 
 import datetime
 
-from sqlalchemy import Column, Text, ForeignKey, Numeric, Integer
+from sqlalchemy import Column, Text, ForeignKey, Numeric, Integer, Boolean
 
 from sqlalchemy.dialects.postgresql import UUID, TIMESTAMP
 
@@ -34,5 +34,7 @@ class Team(Base):
     status      = Column(Text, nullable=False, default="draft")
 
     # status values: draft | approved | active | evaluated
+    
+    is_qualified_round_3 = Column(Boolean, nullable=False, default=False)
 
     created_at  = Column(TIMESTAMP(timezone=True), default=datetime.datetime.utcnow)

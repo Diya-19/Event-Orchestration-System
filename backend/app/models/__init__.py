@@ -24,6 +24,9 @@ from app.models.communication import Communication, CommunicationLog
 
 from app.models.activity_log import ActivityLog
 from app.models.submission import Submission
+from app.models.travel import TeamTravel
+from app.models.notification import Notification
+from app.models.travel_query import TravelQuery
 
 __all__ = [
 
@@ -49,4 +52,7 @@ __all__ = [
     "CommunicationLog",
     "ActivityLog",
     "Submission",
+    "TeamTravel",
+    "Notification",
+    "TravelQuery",
 ]

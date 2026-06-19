@@ -42,7 +42,7 @@ const NAV = [
   { to: "/dashboard/travel-management", label: "Travel Management", icon: <Plane size={18} /> },
   { to: "/dashboard/rules", label: "Rules", icon: <Shield size={18} /> },
   { to: "/dashboard/team-formation", label: "Team Formation", icon: <Sparkles size={18} /> },
-  { to: "/dashboard/travel-logistics", label: "Travel & Logistics", icon: <Plane size={18} /> }
+  { to: "/dashboard/travel-logistics", label: "Travel & Logistics", icon: <Plane size={18} />}
 ];
 
 export default function DashboardLayout() {
@@ -71,6 +71,28 @@ export default function DashboardLayout() {
     if (path.includes("travel-management")) return { title: "Travel Management", subtitle: "Manage and review travel requests for Round 3 qualified teams" }; // ✅ ADDED
     if (path.includes("travel-logistics")) return { title: "Travel & Logistics Management", subtitle: "Manage travel details, hotel accommodations, event schedules and reimbursements" };
 
+    // Default
+    return { title: "Dashboard", subtitle: "Overview of event management" };
+  };
+
+  const { title, subtitle } = getPageHeader();
+
+  // ✅ Logic to show dynamic Title in Top Bar
+  const getPageHeader = () => {
+    const path = location.pathname;
+    if (path.includes("activity-logs")) return { title: "Activity Logs", subtitle: "Monitor all important activities and actions across the platform" };
+    if (path.includes("participants")) return { title: "Participants", subtitle: "Manage all hackathon participants" };
+    if (path.includes("current-event")) return { title: "Current Event", subtitle: "Manage the active event" };
+    if (path.includes("team-formation")) return { title: "Team Formation", subtitle: "AI-powered team generation and drafting" };
+    if (path.includes("scoring")) return { title: "Scoring", subtitle: "Manage evaluation criteria and scores" };
+    if (path.includes("results")) return { title: "Results", subtitle: "View and publish final results" };
+    if (path.includes("communication")) return { title: "Communication", subtitle: "Send announcements and messages" };
+    if (path.includes("judge-management")) return { title: "Judge Management", subtitle: "Assign judges and manage evaluations" };
+    if (path.includes("rules")) return { title: "Rules", subtitle: "Configure event rules and policies" };
+    if (path.includes("multiple-events")) return { title: "Multiple Events", subtitle: "Manage all your hackathons" };
+    if (path.includes("travel-management")) return { title: "Travel Management", subtitle: "Manage and review travel requests for Round 3 qualified teams" }; // ✅ ADDED
+    if (path.includes("travel-logistics")) return { title: "Travel & Logistics Management", subtitle: "Manage travel details, hotel accommodations, event schedules and reimbursements"};
+    
     // Default
     return { title: "Dashboard", subtitle: "Overview of event management" };
   };

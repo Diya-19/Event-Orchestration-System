@@ -5,6 +5,7 @@ import {
   MessageSquare,
   FileText,
   Headphones,
+  Plane,
   LogOut,
 } from "lucide-react";
 
@@ -13,16 +14,22 @@ const menuItems = [
   { icon: MessageSquare, label: "Chat", path: "/participant/chat" },
   { icon: FileText, label: "Submission", path: "/participant/submission" },
   { icon: Headphones, label: "Support Centre", path: "/participant/support" },
+  { icon: Plane, label: "Travel & Logistics", path: "/participant/travel" },
 ];
 
 export default function ParticipantSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // ✅ FIXED: Only highlights the exact current route
- const isActive = (path: string) => {
-  return location.pathname === path;
-};
+  const isActive = (path: string) => {
+    if (path === "/participant/travel") {
+      return (
+        location.pathname.startsWith("/participant/travel") ||
+        location.pathname.startsWith("/participant/notifications")
+      );
+    }
+    return location.pathname === path;
+  };
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col flex-shrink-0">
