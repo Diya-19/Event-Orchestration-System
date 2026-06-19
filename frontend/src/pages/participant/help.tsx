@@ -1,6 +1,7 @@
 // frontend/src/pages/participant/help.tsx
 
 import { useEffect, useState } from "react";
+import axios from "axios";
 import {
   Shield,
   FileText,
@@ -54,6 +55,7 @@ const filteredRequests =
     : requests.filter(
         (request) => request.status === statusFilter
       );
+  
   const submittedRequests = [
     {
       id: 1,
@@ -160,6 +162,24 @@ useEffect(() => {
   fetchRequests();
 }, []);
 
+const handleDelete = async (id: number) => {
+  try {
+    await axios.delete(
+      `http://localhost:8000/api/participant/support-requests/${id}`
+    );
+
+    setRequests(prev =>
+      prev.filter(request => request.id !== id)
+    );
+
+    if (selectedRequest?.id === id) {
+      setSelectedRequest(null);
+    }
+  } catch (error) {
+    console.error("Failed to delete request", error);
+  }
+};
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Header */}
@@ -182,9 +202,6 @@ useEffect(() => {
           <div>
             <p className="text-sm font-medium text-gray-900">
               Your request will be reviewed by the support team.
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              You will receive updates via email and dashboard notifications.
             </p>
           </div>
         </div>
@@ -443,13 +460,26 @@ useEffect(() => {
                     <p className="text-xs text-gray-500">
                       Submitted on{" "}
                       {request.created_at
-                      ? new Date(request.created_at).toLocaleString()
-                      : "N/A"}
-                      </p>
-                    <button onClick={() => setSelectedRequest(request)} className="px-4 py-1.5 border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5">
-                      <Eye className="w-3.5 h-3.5" />
-                      View Details
-                    </button>
+                        ? new Date(request.created_at).toLocaleString()
+                        : "N/A"}
+                    </p>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setSelectedRequest(request)}
+                        className="px-4 py-1.5 border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        View Details
+                      </button>
+
+                      <button
+                        onClick={() => handleDelete(request.id)}
+                        className="px-4 py-1.5 border border-red-300 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
