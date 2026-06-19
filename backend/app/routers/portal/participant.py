@@ -10,8 +10,30 @@ from app.models.participant import Participant
 from app.models.team import Team
 from app.models.team_member import TeamMember
 from app.models.event import Event
+from fastapi import WebSocket, WebSocketDisconnect
+from app.websocket_manager import manager
 
 router = APIRouter()
+
+import asyncio
+
+@router.websocket("/ws/support")
+async def support_websocket(websocket: WebSocket):
+    print("WebSocket connection request received")
+
+    await manager.connect(websocket)
+    print("Committee connected")
+
+    try:
+        while True:
+            await asyncio.sleep(1)
+
+    except Exception as e:
+        print("WebSocket Error:", e)
+
+    finally:
+        print("Committee disconnected")
+        manager.disconnect(websocket)
 
 @router.get("/dashboard")
 def get_dashboard(
@@ -285,10 +307,12 @@ def save_submission(
         "updated_at": submission.updated_at
     }
 @router.post("/support-requests")
-def create_support_request(
+async def create_support_request(
+    
     data: SupportRequestCreate,
     db: Session = Depends(get_db)
 ):
+    print("CREATE SUPPORT REQUEST HIT")
     if not settings.DEV_MODE:
         raise HTTPException(
             status_code=403,
@@ -310,6 +334,14 @@ def create_support_request(
     db.add(support_request)
     db.commit()
     db.refresh(support_request)
+    print("Broadcasting support request")
+    await manager.broadcast({
+    "type": "new_support_request",
+    "id": support_request.id,
+    "issue_type": support_request.issue_type,
+    "priority": support_request.priority,
+    "description": support_request.description,
+})
 
     return {
         "id": support_request.id,
@@ -358,3 +390,25 @@ def get_support_requests(db: Session = Depends(get_db)):
         }
         for r in requests
     ]
+
+@router.delete("/support-requests/{request_id}")
+def delete_support_request(
+    request_id: int,
+    db: Session = Depends(get_db)
+):
+    request = (
+        db.query(SupportRequest)
+        .filter(SupportRequest.id == request_id)
+        .first()
+    )
+
+    if not request:
+        raise HTTPException(
+            status_code=404,
+            detail="Support request not found"
+        )
+
+    db.delete(request)
+    db.commit()
+
+    return {"message": "Deleted successfully"}
