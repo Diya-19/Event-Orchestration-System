@@ -231,7 +231,7 @@ export default function TravelManagement() {
             </div>
           </div>
 
-          {/* Table */}
+          {/* Data Table */}
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">

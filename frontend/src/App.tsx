@@ -18,6 +18,7 @@ import Results from "./pages/Committee Dashboard/Results";
 import JudgeManagement from "./pages/Committee Dashboard/JudgeManagent";
 import ActivityLogs from "./pages/Committee Dashboard/ActivityLogs";
 import TravelManagement from "./pages/Committee Dashboard/TravelManagement";
+import TravelAndLogistics from "./pages/Committee Dashboard/Travel&Logistics";
 
 // Judge Pages
 import JudgeSidebar from "./pages/Judge/sidebar";
@@ -94,6 +95,7 @@ export default function App() {
           <Route path="judge-management" element={<JudgeManagement />} />
           <Route path="activity-logs" element={<ActivityLogs />} />
           <Route path="travel-management" element={<TravelManagement />} />
+          <Route path="travel-logistics" element={<TravelAndLogistics />}/>
         </Route>
 
         {/* JUDGE DASHBOARD */}
@@ -142,6 +144,7 @@ export default function App() {
             <Route path="travel-queries" element={<TravelQueries />} />
           </Route>
         </Route>
+          
 
         {/* DEFAULT REDIRECT */}
         <Route path="*" element={<Navigate to="/dashboard/current-event" replace />} />
