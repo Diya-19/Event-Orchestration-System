@@ -53,7 +53,7 @@ app.include_router(activity_logs.router, prefix="/api/activity-logs", tags=["Act
 
 
 # Public/Portal API
-app.include_router(portal_participant.router, prefix="/api/portal/participant", tags=["Portal - Participant"])
+app.include_router(portal_participant.router, prefix="/api/participant", tags=["Portal - Participant"])
 #app.include_router(portal_evaluator.router, prefix="/api/portal/evaluator", tags=["Portal - Evaluator"])
 
 # Judge Portal Routers

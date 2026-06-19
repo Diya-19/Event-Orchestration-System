@@ -4,7 +4,6 @@ import {
   Search,
   Download,
   MoreVertical,
-  Upload,
   CheckCircle2,
   AlertTriangle,
   FileText,
@@ -18,7 +17,6 @@ import {
 import { api } from "../../lib/api";
 
 // --- Types ---
-
 interface ActivityLogItem {
   id: number;
   time: string;
@@ -82,7 +80,6 @@ interface RecentSubmission {
 }
 
 // --- Donut chart helper ---
-
 const CIRCUMFERENCE = 2 * Math.PI * 40;
 
 const MODULE_COLORS: Record<string, string> = {
@@ -124,7 +121,6 @@ function DonutChart({ breakdown, total }: { breakdown: SummaryBreakdown[]; total
 }
 
 // --- Helpers ---
-
 function getStatusIcon(status: string) {
   if (status === "Pending") return <AlertTriangle size={16} className="text-orange-600" />;
   return <CheckCircle2 size={16} className="text-green-600" />;
@@ -157,8 +153,7 @@ function exportCSV(items: ActivityLogItem[]) {
   URL.revokeObjectURL(url);
 }
 
-// --- Component ---
-
+// --- Main Component ---
 export default function ActivityLogs() {
   const [searchParams] = useSearchParams();
   const eventId = searchParams.get("event_id") ?? "";
@@ -181,18 +176,15 @@ export default function ActivityLogs() {
   const [sidebarLoading, setSidebarLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
 
-  // Debounce search
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 400);
     return () => clearTimeout(t);
   }, [search]);
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, actorType, module, dateFrom, dateTo]);
 
-  // Fetch stats + summary + recent submissions (sidebar data)
   useEffect(() => {
     if (!eventId) return;
     setSidebarLoading(true);
@@ -216,7 +208,6 @@ export default function ActivityLogs() {
       .finally(() => setSidebarLoading(false));
   }, [eventId]);
 
-  // Fetch paginated logs
   const fetchLogs = useCallback(async () => {
     if (!eventId) return;
     setLogsLoading(true);
@@ -240,7 +231,6 @@ export default function ActivityLogs() {
     fetchLogs();
   }, [fetchLogs]);
 
-  // Export all matching logs as CSV
   const handleExport = async () => {
     if (!eventId) return;
     setExportLoading(true);
@@ -260,7 +250,6 @@ export default function ActivityLogs() {
     }
   };
 
-  // --- Stat card config (static layout, values filled from API) ---
   const STAT_CARDS = [
     {
       title: "Total Participants",
@@ -423,7 +412,8 @@ export default function ActivityLogs() {
 
       {/* Main Content */}
       <div className="grid grid-cols-3 gap-6">
-        {/* Activity Table */}
+        
+        {/* Activity Table Block */}
         <div className="col-span-2 space-y-6">
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             <div className="p-5 border-b border-gray-200 flex items-center justify-between">
@@ -527,12 +517,11 @@ export default function ActivityLogs() {
                     Previous
                   </button>
                   {pageNumbers().map((p, i, arr) => (
-                    <>
+                    <span key={p} className="flex items-center">
                       {i > 0 && arr[i - 1] !== p - 1 && (
-                        <span key={`ellipsis-${p}`} className="text-gray-400 px-2">…</span>
+                        <span className="text-gray-400 px-2">…</span>
                       )}
                       <button
-                        key={p}
                         onClick={() => setPage(p)}
                         className={`px-3 py-1.5 rounded-lg text-sm ${
                           p === currentPage
@@ -542,7 +531,7 @@ export default function ActivityLogs() {
                       >
                         {p}
                       </button>
-                    </>
+                    </span>
                   ))}
                   <button
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
@@ -561,9 +550,7 @@ export default function ActivityLogs() {
         <div className="space-y-6">
           {/* Recent Submissions */}
           <div className="bg-white rounded-2xl border border-gray-200 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-lg">Recent Submissions</h3>
-            </div>
+            <h3 className="font-semibold text-lg mb-4">Recent Submissions</h3>
             {sidebarLoading ? (
               <div className="space-y-3">
                 {Array.from({ length: 4 }).map((_, i) => (
@@ -592,9 +579,7 @@ export default function ActivityLogs() {
 
           {/* Pending Reviews */}
           <div className="bg-white rounded-2xl border border-gray-200 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-lg">Pending Reviews</h3>
-            </div>
+            <h3 className="font-semibold text-lg mb-4">Pending Reviews</h3>
             {sidebarLoading ? (
               <div className="space-y-3">
                 {Array.from({ length: 4 }).map((_, i) => (
@@ -657,7 +642,7 @@ export default function ActivityLogs() {
             ) : null}
           </div>
 
-          {/* Today's Summary */}
+          {/* Today's Summary Breakdowns */}
           <div className="bg-white rounded-2xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-lg">Today's Summary</h3>
@@ -706,6 +691,7 @@ export default function ActivityLogs() {
             ) : null}
           </div>
         </div>
+
       </div>
     </div>
   );

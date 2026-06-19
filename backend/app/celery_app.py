@@ -11,7 +11,7 @@ celery_app = Celery(
     broker="redis://localhost:6379/0",
     backend="redis://localhost:6379/0" ,
     
-    include=["app.tasks.communication_tasks","app.tasks.consolidate_scores_task", "app.tasks.event_workflow_tasks",]
+    include=["app.tasks.communication_tasks","app.tasks.consolidate_scores_task", "app.tasks.event_workflow_tasks", ]
 )
 
 # Optional but recommended settings

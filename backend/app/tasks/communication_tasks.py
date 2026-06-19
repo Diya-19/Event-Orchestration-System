@@ -299,7 +299,7 @@ def notify_participants_task(self, event_id_str: str):
 
         frontend_base = settings.FRONTEND_URL
         sg = SendGridAPIClient(os.environ.get("SENDGRID_API_KEY", ""))
-        from_email = os.environ.get("FROM_EMAIL", "noreply@hackflow.app")
+        from_email = os.environ.get("FROM_EMAIL", "agrawaldiya80@gmail.com")
 
         success_count = 0
         for member in members:
@@ -354,7 +354,7 @@ def notify_evaluators_task(self, event_id_str: str):
 
         frontend_base = settings.FRONTEND_URL
         sg = SendGridAPIClient(os.environ.get("SENDGRID_API_KEY", ""))
-        from_email = os.environ.get("FROM_EMAIL", "noreply@hackflow.app")
+        from_email = os.environ.get("FROM_EMAIL", "agrawaldiya80@gmail.com")
 
         success_count = 0
         for ev in evaluators:

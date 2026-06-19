@@ -28,7 +28,6 @@ _MODULE_KEYWORDS: list[tuple[str, list[str]]] = [
     ("Team",              ["team", "member", "invite"]),
 ]
 
-
 def _infer_module(action: str) -> str:
     lower = action.lower()
     for module, keywords in _MODULE_KEYWORDS:
@@ -36,34 +35,43 @@ def _infer_module(action: str) -> str:
             return module
     return "Other"
 
+def _clean_uuid_name(name: str) -> str:
+    """Forcefully cleans any UUID string that sneaks through from the database JSON."""
+    if not name: 
+        return name
+    if name.startswith("committee:"):
+        return f"Admin #{name.split(':')[1][:8]}"
+    if name.startswith("evaluator:"):
+        return f"Judge #{name.split(':')[1][:8]}"
+    if name == "committee":
+        return "Admin"
+    return name
 
 def _actor_role(actor: str) -> str:
     if actor == "system":
         return "System"
-    if actor == "committee":
+    if actor.startswith("committee"):
         return "Administrator"
     if actor.startswith("evaluator:"):
         return "Judge"
-    if actor.startswith("participant:"):
-        return "Participant"
     return "Participant"
-
 
 def _actor_display(actor: str, db: Session) -> str:
     """Return a human-readable name for the actor."""
-    if actor in ("system", "committee"):
-        return actor.capitalize()
+    if actor == "system":
+        return "System"
+    if actor.startswith("committee"):
+        return f"Admin #{actor.split(':')[1][:8]}" if ":" in actor else "Admin"
     if actor.startswith("evaluator:"):
         return f"Judge #{actor.split(':')[1][:8]}"
     if actor.startswith("participant:"):
         raw_id = actor.split(":", 1)[1]
         try:
             p = db.get(Participant, uuid.UUID(raw_id))
-            return p.name if p else raw_id
+            return p.name if p else f"User #{raw_id[:8]}"
         except ValueError:
-            return raw_id
+            return f"User #{raw_id[:8]}"
     return actor
-
 
 def _serialize_log(log: ActivityLog, db: Session) -> dict:
     details: dict = log.details or {}
@@ -71,14 +79,27 @@ def _serialize_log(log: ActivityLog, db: Session) -> dict:
     team_name = details.get("team_name", "")
     status = details.get("status", "Completed")
 
+    # 1. Pull the raw name, checking JSON details first, then falling back to actor column
+    raw_user = details.get("user_name") or _actor_display(log.actor, db)
+    
+    # 2. Force it to be clean (scrubbing out the ugly UUID)
+    clean_user = _clean_uuid_name(raw_user)
+
+    # 3. Force the role to match the clean user 
+    role = _actor_role(log.actor)
+    if "Admin" in clean_user:
+        role = "Administrator"
+    elif "Judge" in clean_user:
+        role = "Judge"
+
     return {
         "id": log.id,
         "time": log.created_at.strftime("%I:%M %p"),
         "date": log.created_at.strftime("%d %b %Y"),
         "created_at": log.created_at.isoformat(),
         "actor": log.actor,
-        "user": details.get("user_name") or _actor_display(log.actor, db),
-        "role": _actor_role(log.actor),
+        "user": clean_user,
+        "role": role,
         "action": log.action,
         "activity": details.get("activity_label") or log.action.replace("_", " ").capitalize(),
         "team": team_name,
@@ -87,20 +108,18 @@ def _serialize_log(log: ActivityLog, db: Session) -> dict:
         "status": status,
     }
 
-
 def _actor_type_filter(actor_type: str):
     """Return a SQLAlchemy WHERE clause fragment for actor_type."""
     at = actor_type.lower()
     if at == "system":
         return ActivityLog.actor == "system"
     if at == "committee":
-        return ActivityLog.actor == "committee"
+        return ActivityLog.actor.like("committee%")
     if at == "evaluator":
         return ActivityLog.actor.like("evaluator:%")
     if at == "participant":
         return ActivityLog.actor.like("participant:%")
     return None
-
 
 # ---------------------------------------------------------------------------
 # 1. GET /activity-logs  — paginated list with filters
@@ -167,16 +186,14 @@ def list_activity_logs(
         "items": [_serialize_log(log, db) for log in logs],
     }
 
-
 # ---------------------------------------------------------------------------
 # 2. GET /activity-logs/stats  — stat cards with 7-day trend
 # ---------------------------------------------------------------------------
 
-def _pct_change(current: int, previous: int) -> float | None:
+def _pct_change(current: int, previous: int) -> Optional[float]:
     if previous == 0:
         return None  # no comparison baseline
     return round((current - previous) / previous * 100, 1)
-
 
 @router.get("/stats")
 def activity_stats(
@@ -299,7 +316,6 @@ def activity_stats(
         "pending_requests_change_pct": _pct_change(pending_this_week,       pending_prev_week),
     }
 
-
 # ---------------------------------------------------------------------------
 # 3. GET /activity-logs/summary  — today's module breakdown (donut chart)
 # ---------------------------------------------------------------------------
@@ -346,7 +362,6 @@ def activity_summary(
         "breakdown": breakdown,
     }
 
-
 # ---------------------------------------------------------------------------
 # 4. GET /activity-logs/recent-submissions  — sidebar panel
 # ---------------------------------------------------------------------------
@@ -383,7 +398,6 @@ def recent_submissions(
         }
         for log in logs
     ]
-
 
 # ---------------------------------------------------------------------------
 # 5. GET /activity-logs/pending-reviews  — sidebar pending counts
