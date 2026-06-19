@@ -1,9 +1,10 @@
 import { NavLink } from "react-router-dom";
-import { Plane, Bell } from "lucide-react";
+import { Plane, Bell, MessageSquare } from "lucide-react";
 
 export default function TravelTabs() {
   const tabs = [
     { name: "Dashboard", path: "/participant/travel", icon: Plane, exact: true },
+    { name: "Queries", path: "/participant/travel-queries", icon: MessageSquare, exact: false },
     { name: "Notifications", path: "/participant/notifications", icon: Bell, exact: false },
   ];
 
