@@ -1,10 +1,9 @@
-// frontend/src/App.tsx
-
 import React, { useState, useEffect } from "react";
 import { api } from "./lib/api";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import TeamPage from "./pages/participant/TeamPage";
+
 // Committee Dashboard Pages
 import DashboardLayout from "./pages/Committee Dashboard/Sidebar";
 import OverviewPage from "./pages/Committee Dashboard/Dashboard";
@@ -33,7 +32,7 @@ import SubmissionPage from "./pages/participant/submission";
 import HelpPage from "./pages/participant/help"; 
 import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 
-// Travel Pages ✅ ADDED
+// Travel Pages
 import TravelDashboard from "./pages/travel/Dashboard";
 import TravelNotifications from "./pages/travel/Notifications";
 import TravelQueries from "./pages/travel/TravelQueries";
@@ -50,7 +49,6 @@ function RequireRound3({ children }: { children: JSX.Element }) {
     const fetchQualification = async () => {
       try {
         const res = await api.get("/api/participant/dashboard");
-        // Safe check for the nested attribute
         if (res.data?.team?.is_qualified_round_3) {
           setIsQualified(true);
         } else {
@@ -141,6 +139,7 @@ export default function App() {
           <Route element={<RequireRound3><Outlet /></RequireRound3>}>
             <Route path="travel" element={<TravelDashboard />} />
             <Route path="notifications" element={<TravelNotifications />} />
+            <Route path="travel-queries" element={<TravelQueries />} />
           </Route>
         </Route>
 

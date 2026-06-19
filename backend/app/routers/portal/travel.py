@@ -6,6 +6,7 @@ from app.models.participant import Participant
 from app.models.team import Team
 from app.models.team_member import TeamMember
 from app.models.travel import TeamTravel, TravelReimbursementClaim
+from app.models.travel_query import TravelQuery
 from app.models.event import Event
 from pydantic import BaseModel
 import datetime
@@ -482,4 +483,74 @@ def get_emergency_contacts(
     
     return {
         "emergency_contacts": emergency_contacts
+    }
+
+# --- Travel Queries Endpoints ---
+
+class QueryCreateRequest(BaseModel):
+    category: str
+    subject: str
+    message: str
+
+@router.get("/queries")
+def get_queries(
+    db: Session = Depends(get_db),
+    auth_data: dict = Depends(require_round3_participant)
+):
+    team = auth_data["team"]
+    
+    queries = db.query(TravelQuery).filter(
+        TravelQuery.team_id == team.id
+    ).order_by(TravelQuery.created_at.desc()).all()
+    
+    return {
+        "queries": [
+            {
+                "id": str(q.id),
+                "category": q.category,
+                "subject": q.subject,
+                "message": q.message,
+                "status": q.status,
+                "conversation": q.conversation or [],
+                "created_at": q.created_at.isoformat(),
+                "updated_at": q.updated_at.isoformat()
+            }
+            for q in queries
+        ]
+    }
+
+@router.post("/queries")
+def create_query(
+    req: QueryCreateRequest,
+    db: Session = Depends(get_db),
+    auth_data: dict = Depends(require_round3_participant)
+):
+    participant = auth_data["participant"]
+    team = auth_data["team"]
+    
+    query = TravelQuery(
+        participant_id=participant.id,
+        team_id=team.id,
+        category=req.category,
+        subject=req.subject,
+        message=req.message,
+        status="Submitted",
+        conversation=[
+            {
+                "from": "You",
+                "text": req.message,
+                "time": datetime.datetime.utcnow().isoformat(),
+                "isUser": True
+            }
+        ]
+    )
+    
+    db.add(query)
+    db.commit()
+    db.refresh(query)
+    
+    return {
+        "id": str(query.id),
+        "message": "Query submitted successfully",
+        "status": query.status
     }
