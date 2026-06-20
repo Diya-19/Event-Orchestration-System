@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Bell, Calendar, Clock, Loader2, Check } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Bell, Calendar, Clock, Loader2 } from "lucide-react";
 import { api } from "../../lib/api";
 import TravelTabs from "./TravelTabs";
 
@@ -13,6 +14,7 @@ interface Notification {
   action_label?: string;
   action_url?: string;
   link?: string;
+  query_id?: string;
   is_read: boolean;
   created_at: string;
 }
@@ -48,6 +50,7 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
   const [activeFilter, setActiveFilter] = useState("All");
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -70,13 +73,20 @@ export default function Notifications() {
     fetchData();
   }, []);
 
-  const markAsRead = async (id: string, isRead: boolean) => {
-    if (isRead) return;
-    try {
-      await api.patch(`/api/participant/notifications/${id}/read`);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-    } catch (err) {
-      console.error("Failed to mark as read");
+  const markAsRead = async (notif: Notification) => {
+    if (!notif.is_read) {
+      try {
+        await api.patch(`/api/participant/notifications/${notif.id}/read`);
+        setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+      } catch (err) {
+        console.error("Failed to mark as read");
+      }
+    }
+    
+    if (notif.query_id) {
+      navigate(`/participant/travel?tab=queries&query_id=${notif.query_id}`);
+    } else if (notif.link) {
+      navigate(notif.link);
     }
   };
 
@@ -100,10 +110,15 @@ export default function Notifications() {
   // Generate dynamic categories for filters
   const categories = ["All", ...Array.from(new Set(notifications.map(n => n.category)))];
 
-  // Filter logic
+  // Filter logic and sorting (unread first)
   const filteredNotifications = notifications.filter(n => {
     if (activeFilter === "All") return true;
     return n.category === activeFilter;
+  }).sort((a, b) => {
+    if (a.is_read === b.is_read) {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    }
+    return a.is_read ? 1 : -1;
   });
 
   console.log("Filtered notifications:", filteredNotifications);
@@ -155,7 +170,7 @@ export default function Notifications() {
             return (
               <div
                 key={notif.id}
-                onClick={() => markAsRead(notif.id, notif.is_read)}
+                onClick={() => markAsRead(notif)}
                 className={`rounded-xl p-5 border cursor-pointer transition-all flex justify-between items-start gap-4 ${
                   !notif.is_read 
                     ? "bg-purple-50 border-purple-200 shadow-sm" 

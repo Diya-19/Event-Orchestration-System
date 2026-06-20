@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from pydantic import BaseModel
 
 from app.db import get_db
 
@@ -8,7 +9,8 @@ from app.models.participant import Participant
 from app.models.team import Team
 from app.models.travel import TeamTravel, TravelReimbursementClaim
 from app.models.team_member import TeamMember
-from fastapi import APIRouter
+from app.models.travel_query import TravelQuery
+from app.models.notification import Notification
 
 router = APIRouter()
 
@@ -206,3 +208,39 @@ def get_team_details(
             )
         }
     }
+class ReplyPayload(BaseModel):
+    message: str
+
+@router.post("/queries/{query_id}/reply")
+def reply_to_travel_query(query_id: str, payload: ReplyPayload, db: Session = Depends(get_db)):
+    query = db.query(TravelQuery).filter(TravelQuery.id == query_id).first()
+    if not query:
+        raise HTTPException(status_code=404, detail="Travel query not found")
+
+    import datetime
+    reply_msg = {
+        "sender": "committee",
+        "message": payload.message,
+        "timestamp": datetime.datetime.utcnow().isoformat()
+    }
+    
+    current_conv = list(query.conversation) if query.conversation else []
+    current_conv.append(reply_msg)
+    query.conversation = current_conv
+    query.status = "In Progress"
+
+    # Generate Notification for the participant
+    notification = Notification(
+        participant_id=query.participant_id,
+        team_id=query.team_id,
+        title="Travel Query Updated",
+        message=f"The committee has replied to your query: '{query.subject}'",
+        category="Travel",
+        notification_type="travel",
+        query_id=query.id
+    )
+    db.add(notification)
+    
+    db.commit()
+    return {"status": "success"}
+

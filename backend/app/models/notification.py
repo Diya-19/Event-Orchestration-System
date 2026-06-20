@@ -20,6 +20,7 @@ class Notification(Base):
     notification_type = Column(Text, nullable=False) # travel | accommodation | reimbursement | event | announcement | urgent
     
     # Optional metadata
+    query_id = Column(UUID(as_uuid=True), ForeignKey("travel_queries.id", ondelete="CASCADE"), nullable=True)
     deadline = Column(TIMESTAMP(timezone=True), nullable=True)
     action_label = Column(Text, nullable=True)
     action_url = Column(Text, nullable=True)

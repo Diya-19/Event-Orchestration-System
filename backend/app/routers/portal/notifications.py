@@ -78,3 +78,5 @@ def mark_notification_read(
     db.commit()
     
     return {"is_read": True}
+
+

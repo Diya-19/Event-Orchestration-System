@@ -32,6 +32,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.staticfiles import StaticFiles
+import os
+
+os.makedirs("uploads", exist_ok=True)
+app.mount("/api/files/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 # --- Routers ---
 
 # Auth
