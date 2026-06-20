@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   MessageCircle,
   Clock,
@@ -24,10 +25,13 @@ export default function TravelManagement() {
   const [queries, setQueries] = useState<any[]>([]);
   const [selectedQuery, setSelectedQuery] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [searchParams] = useSearchParams();
+  const eventId = searchParams.get("event_id") || "";
 
   const fetchQueries = async () => {
     try {
-      const res = await api.get("/api/travel-logistics/queries");
+      if (!eventId) return;
+      const res = await api.get(`/api/travel-logistics/queries?event_id=${eventId}`);
       setQueries(res.data.queries || []);
       if (!selectedQuery && res.data.queries && res.data.queries.length > 0) {
         setSelectedQuery(res.data.queries[0].id);
@@ -39,7 +43,7 @@ export default function TravelManagement() {
 
   useEffect(() => {
     fetchQueries();
-  }, []);
+  }, [eventId]);
 
   const stats = [
     { icon: MessageCircle, label: "Total Queries", value: queries.length, sublabel: "All time", color: "purple" },

@@ -76,6 +76,69 @@ def get_travel_logistics(event_id: str = None, db: Session = Depends(get_db)):
     return result
 
 
+@router.get("/queries")
+def get_all_travel_queries(event_id: str = None, db: Session = Depends(get_db)):
+    query = db.query(
+        TravelQuery.id,
+        TravelQuery.category,
+        TravelQuery.subject,
+        TravelQuery.message,
+        TravelQuery.status,
+        TravelQuery.conversation,
+        TravelQuery.created_at,
+        TravelQuery.updated_at,
+        Participant.name.label("participant_name"),
+        Team.name.label("team_name"),
+        Team.event_id
+    ).join(
+        Participant, Participant.id == TravelQuery.participant_id
+    ).join(
+        Team, Team.id == TravelQuery.team_id
+    )
+
+    if event_id:
+        query = query.filter(Team.event_id == event_id)
+
+    queries = query.order_by(TravelQuery.created_at.desc()).all()
+
+    return {
+        "queries": [
+            {
+                "id": str(q.id),
+                "category": q.category,
+                "subject": q.subject,
+                "message": q.message,
+                "status": q.status,
+                "conversation": q.conversation,
+                "created_at": q.created_at.isoformat() if q.created_at else None,
+                "updated_at": q.updated_at.isoformat() if q.updated_at else None,
+                "participant_name": q.participant_name,
+                "team_name": q.team_name,
+            } for q in queries
+        ]
+    }
+
+@router.patch("/queries/{query_id}/resolve")
+def resolve_query(query_id: str, db: Session = Depends(get_db)):
+    query = db.query(TravelQuery).filter(TravelQuery.id == query_id).first()
+    if not query:
+        raise HTTPException(status_code=404, detail="Query not found")
+    
+    query.status = "Resolved"
+    db.commit()
+    return {"message": "Query resolved"}
+
+@router.patch("/queries/{query_id}/escalate")
+def escalate_query(query_id: str, db: Session = Depends(get_db)):
+    query = db.query(TravelQuery).filter(TravelQuery.id == query_id).first()
+    if not query:
+        raise HTTPException(status_code=404, detail="Query not found")
+    
+    query.status = "Escalated"
+    db.commit()
+    return {"message": "Query escalated"}
+
+
 @router.get("/{team_id}")
 def get_team_details(
     team_id: str,

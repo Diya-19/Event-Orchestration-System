@@ -102,7 +102,7 @@ export default function TravelLogisticsManagement() {
         const res = await api.get(`/api/travel-logistics/?event_id=${eventId}`);
         const data = res.data;
         const uniqueTeams = data.filter((team: any, index: number, self: any[]) => 
-          index === self.findIndex((t) => (t.team_id || t.id) === (team.team_id || team.id) || (t.team_name || t.teamName) === (team.team_name || team.teamName))
+          index === self.findIndex((t) => (t.team_id || t.id) === (team.team_id || team.id))
         );
         const sortedData = [...uniqueTeams].sort((a: any, b: any) => {
           const nameA = a.team_name || a.teamName || "";
