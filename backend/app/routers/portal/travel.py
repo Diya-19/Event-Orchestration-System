@@ -58,7 +58,8 @@ def get_dashboard(
     start_date = schedule.get("start_date", "")
     event_started = (today_str >= start_date) if start_date else False
     
-    travel_schedule = config.get("travel_schedule", {})
+    travel_schedule = config.get("travel_schedule", [])
+    travel_coordinator = config.get("travel_coordinator", {})
     
     accommodation = travel_info.accommodation or {} if travel_info else {}
     
@@ -91,8 +92,10 @@ def get_dashboard(
         "hotel_name": accommodation.get("hotel_name"),
         "hotel_address": accommodation.get("hotel_address"),
         "hotel_contact": accommodation.get("hotel_contact"),
-        "hotel_checkin": accommodation.get("hotel_checkin"),
-        "hotel_google_maps_url": accommodation.get("hotel_google_maps_url"),
+        "hotel_checkin": accommodation.get("check_in_date"),
+        "hotel_checkout": accommodation.get("check_out_date"),
+        "hotel_google_maps_url": accommodation.get("hotel_maps_url"),
+        "special_instructions": accommodation.get("special_instructions"),
         
         "combined_ticket_url": travel_info.combined_ticket_url if travel_info else None,
         "combined_ticket_name": travel_info.combined_ticket_name if travel_info else None,
@@ -108,6 +111,7 @@ def get_dashboard(
             "event_started": event_started
         },
         "travel_schedule": travel_schedule,
+        "travel_coordinator": travel_coordinator,
         
         "travel_status": travel_info.travel_status if travel_info and travel_info.travel_status else "draft",
         "travel_locked": travel_info.is_locked if travel_info else False,
@@ -129,6 +133,7 @@ def get_dashboard(
             "need_hotel_to_airport_cab": travel_info.need_hotel_to_airport_cab if travel_info else False,
             "need_accommodation": travel_info.need_accommodation if travel_info else False,
             "self_arranged_accommodation": travel_info.self_arranged_accommodation if travel_info else False,
+            "preferences_submitted": travel_info.preferences_submitted if travel_info else False,
             "emergency_contact_name": travel_info.emergency_contact_name if travel_info else "",
             "emergency_contact_phone": travel_info.emergency_contact_phone if travel_info else ""
         }
@@ -164,7 +169,7 @@ def update_travel_details(
         db.add(travel_info)
         
     if travel_info.is_locked:
-        raise HTTPException(status_code=403, detail="Travel details are locked.")
+        raise HTTPException(status_code=403, detail="Travel information is currently locked by the committee. Please contact the organizers through Travel Queries.")
         
     try:
         travel_info.arrival_date = datetime.date.fromisoformat(req.arrival_date) if req.arrival_date else None
@@ -221,7 +226,7 @@ def upload_ticket(
     
     travel_info = db.query(TeamTravel).filter(TeamTravel.team_id == team.id).first()
     if travel_info and travel_info.is_locked:
-        raise HTTPException(status_code=403, detail="Claim Under Review. Editing Disabled.")
+        raise HTTPException(status_code=403, detail="Travel information is currently locked by the committee. Please contact the organizers through Travel Queries.")
     
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
@@ -266,7 +271,7 @@ def delete_ticket(
         raise HTTPException(status_code=404, detail="No ticket found to delete.")
         
     if travel_info.is_locked:
-        raise HTTPException(status_code=403, detail="Claim Under Review. Editing Disabled.")
+        raise HTTPException(status_code=403, detail="Travel information is currently locked by the committee. Please contact the organizers through Travel Queries.")
         
     try:
         file_path = travel_info.combined_ticket_url.replace("/api/files/", "")
@@ -348,7 +353,7 @@ def submit_claim(
     
     travel_info = db.query(TeamTravel).filter(TeamTravel.team_id == team.id).first()
     if travel_info and travel_info.is_locked:
-        raise HTTPException(status_code=403, detail="Claim Under Review. Editing Disabled.")
+        raise HTTPException(status_code=403, detail="Travel information is currently locked by the committee. Please contact the organizers through Travel Queries.")
         
     if len(req.phone_number) != 10 or not req.phone_number.isdigit():
         raise HTTPException(status_code=400, detail="Phone number must be exactly 10 digits.")
@@ -415,7 +420,7 @@ def upload_receipt(
     
     travel_info = db.query(TeamTravel).filter(TeamTravel.team_id == team.id).first()
     if travel_info and travel_info.is_locked:
-        raise HTTPException(status_code=403, detail="Claim Under Review. Editing Disabled.")
+        raise HTTPException(status_code=403, detail="Travel information is currently locked by the committee. Please contact the organizers through Travel Queries.")
     
     allowed_extensions = ['.pdf', '.png', '.jpg', '.jpeg']
     file_ext = os.path.splitext(file.filename)[1].lower()
@@ -593,8 +598,69 @@ def create_query(
     db.commit()
     db.refresh(query)
     
+    from app.models.notification import Notification
+    notification = Notification(
+        participant_id=participant.id,
+        team_id=team.id,
+        title="Travel Query Received",
+        message=f"Your travel query '{req.subject}' has been received and is being reviewed.",
+        category="Travel",
+        notification_type="travel",
+        query_id=query.id
+    )
+    db.add(notification)
+    db.commit()
+    
     return {
         "id": str(query.id),
         "message": "Query submitted successfully",
         "status": query.status
+    }
+
+class TravelPreferencesPatchRequest(BaseModel):
+    need_airport_to_hotel_cab: bool
+    need_hotel_to_airport_cab: bool
+    need_accommodation: bool
+    self_arranged_accommodation: bool
+
+@router.patch("/preferences")
+def update_travel_preferences(
+    req: TravelPreferencesPatchRequest,
+    db: Session = Depends(get_db),
+    auth_data: dict = Depends(require_round3_participant)
+):
+    team = auth_data["team"]
+    
+    # Mutually exclusive validation
+    if req.need_accommodation and req.self_arranged_accommodation:
+        raise HTTPException(status_code=400, detail="Cannot need accommodation and self-arrange simultaneously.")
+        
+    travel_info = db.query(TeamTravel).filter(TeamTravel.team_id == team.id).first()
+    if not travel_info:
+        travel_info = TeamTravel(team_id=team.id)
+        db.add(travel_info)
+        
+    if travel_info.is_locked:
+        raise HTTPException(status_code=403, detail="Travel information is currently locked by the committee. Please contact the organizers through Travel Queries.")
+        
+    if getattr(travel_info, 'preferences_submitted', False):
+        raise HTTPException(status_code=403, detail="Travel preferences have already been submitted and cannot be edited.")
+        
+    travel_info.need_airport_to_hotel_cab = req.need_airport_to_hotel_cab
+    travel_info.need_hotel_to_airport_cab = req.need_hotel_to_airport_cab
+    travel_info.need_accommodation = req.need_accommodation
+    travel_info.self_arranged_accommodation = req.self_arranged_accommodation
+    travel_info.preferences_submitted = True
+    
+    db.commit()
+    
+    return {
+        "status": "success",
+        "preferences": {
+            "need_airport_to_hotel_cab": travel_info.need_airport_to_hotel_cab,
+            "need_hotel_to_airport_cab": travel_info.need_hotel_to_airport_cab,
+            "need_accommodation": travel_info.need_accommodation,
+            "self_arranged_accommodation": travel_info.self_arranged_accommodation,
+            "preferences_submitted": travel_info.preferences_submitted
+        }
     }

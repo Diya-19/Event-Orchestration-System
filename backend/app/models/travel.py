@@ -48,6 +48,7 @@ class TeamTravel(Base):
     need_hotel_to_airport_cab = Column(Boolean, default=False)
     need_accommodation = Column(Boolean, default=False)
     self_arranged_accommodation = Column(Boolean, default=False)
+    preferences_submitted = Column(Boolean, default=False)
     emergency_contact_name = Column(Text)
     emergency_contact_phone = Column(Text)
 

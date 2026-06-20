@@ -89,8 +89,8 @@ export default function App() {
             <Route index element={<Navigate to="overview" replace />} />
             
             {/* Legacy route redirects */}
-            <Route path="travel-management" element={<Navigate to="/dashboard/travel/queries" replace />} />
-            <Route path="travel-logistics" element={<Navigate to="/dashboard/travel/logistics" replace />} />
+            <Route path="travel-management" element={<Navigate to={`/dashboard/travel/queries${window.location.search}`} replace />} />
+            <Route path="travel-logistics" element={<Navigate to={`/dashboard/travel/logistics${window.location.search}`} replace />} />
 
             <Route path="overview" element={<OverviewPage />} />
             <Route path="participants" element={<ParticipantsPage />} />
@@ -105,7 +105,7 @@ export default function App() {
             <Route path="activity-logs" element={<ActivityLogs />} />
             
             <Route path="travel" element={<CommitteeTravelLayout />}>
-              <Route index element={<Navigate to="logistics" replace />} />
+              <Route index element={<Navigate to={`logistics${window.location.search}`} replace />} />
               <Route path="logistics" element={<TravelAndLogistics />} />
               <Route path="queries" element={<TravelManagement />} />
             </Route>

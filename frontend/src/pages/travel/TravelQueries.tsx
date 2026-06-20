@@ -47,17 +47,33 @@ export default function TravelQueries() {
     message: ""
   });
 
+  const handleSetActiveQuery = (queryId: string) => {
+    setActiveQuery(queryId);
+    localStorage.setItem("travel_selected_query_id", queryId);
+  };
+
   const fetchQueries = async () => {
     try {
       setLoading(true);
       const res = await api.get("/api/participant/travel/queries");
-      setQueries(res.data.queries || []);
-      if (res.data.queries?.length > 0) {
-        if (queryIdFromUrl && res.data.queries.find((q: Query) => q.id === queryIdFromUrl)) {
-          setActiveQuery(queryIdFromUrl);
-        } else if (!activeQuery) {
-          setActiveQuery(res.data.queries[0].id);
+      const fetchedQueries = res.data.queries || [];
+      setQueries(fetchedQueries);
+      
+      if (fetchedQueries.length > 0) {
+        const savedQueryId = localStorage.getItem("travel_selected_query_id");
+        
+        if (queryIdFromUrl && fetchedQueries.find((q: Query) => q.id === queryIdFromUrl)) {
+          handleSetActiveQuery(queryIdFromUrl);
+        } else if (activeQuery && fetchedQueries.find((q: Query) => q.id === activeQuery)) {
+          // keep current active query
+        } else if (savedQueryId && fetchedQueries.find((q: Query) => q.id === savedQueryId)) {
+          setActiveQuery(savedQueryId);
+        } else {
+          handleSetActiveQuery(fetchedQueries[0].id);
         }
+      } else {
+        setActiveQuery(null);
+        localStorage.removeItem("travel_selected_query_id");
       }
     } catch (err) {
       console.error("Failed to fetch queries", err);
@@ -104,7 +120,8 @@ export default function TravelQueries() {
       Submitted: "bg-gray-100 text-gray-700",
       "Under Review": "bg-blue-100 text-blue-700",
       "Committee Replied": "bg-indigo-100 text-indigo-700",
-      Resolved: "bg-green-100 text-green-700"
+      Resolved: "bg-green-100 text-green-700",
+      Escalated: "bg-red-100 text-red-700"
     };
     return colors[status] || "bg-gray-100 text-gray-700";
   };
@@ -138,7 +155,10 @@ export default function TravelQueries() {
 
   const getTimeline = (status: string) => {
     const steps = ["Submitted", "Under Review", "Committee Replied", "Resolved"];
-    const currentIndex = steps.indexOf(status);
+    let currentIndex = steps.indexOf(status);
+    if (status === "Escalated") {
+      currentIndex = activeQueryData?.conversation?.some((m: any) => !m.isUser) ? 2 : 1;
+    }
     return steps.map((step, index) => ({
       status: step,
       time: index === 0 && activeQueryData ? formatDate(activeQueryData.created_at) : index <= currentIndex ? "—" : "—",
@@ -282,7 +302,7 @@ export default function TravelQueries() {
                   return (
                     <div
                       key={query.id}
-                      onClick={() => setActiveQuery(query.id)}
+                      onClick={() => handleSetActiveQuery(query.id)}
                       className={`p-4 rounded-xl border cursor-pointer transition ${
                         activeQuery === query.id ? "border-purple-300 bg-purple-50" : "border-gray-200 hover:border-gray-300"
                       }`}
@@ -333,6 +353,17 @@ export default function TravelQueries() {
                   Submitted on {formatDate(activeQueryData.created_at)} • Category: {activeQueryData.category}
                 </p>
               </div>
+
+              {activeQueryData.status === "Escalated" && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2 mb-4">
+                  <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-red-600 text-xs font-bold">!</span>
+                  </div>
+                  <p className="text-sm text-red-800">
+                    This query has been escalated for further review by the committee.
+                  </p>
+                </div>
+              )}
 
               {/* Messages */}
               <div className="space-y-4 mb-4 max-h-96 overflow-y-auto">

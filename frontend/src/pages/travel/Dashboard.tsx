@@ -33,6 +33,7 @@ interface TravelData {
   claim: ClaimData | null;
   timeline: any;
   travel_schedule: any;
+  travel_coordinator?: { name: string, phone: string, whatsapp: string, email: string };
   ticket_file_url?: string;
   travel_locked?: boolean;
   reimbursement_limit?: number;
@@ -69,6 +70,10 @@ export default function TravelDashboard() {
   const isBackendLocked = travelData?.travel_locked || false;
   const [isTravelDetailsEditing, setIsTravelDetailsEditing] = useState(false);
   const travelDetailsLocked = isBackendLocked || !isTravelDetailsEditing;
+
+  const [isPreferencesEditing, setIsPreferencesEditing] = useState(false);
+  const preferencesLocked = isBackendLocked || !isPreferencesEditing;
+  const [preferencesSuccessMessage, setPreferencesSuccessMessage] = useState("");
 
   const [travelDetailsTouched, setTravelDetailsTouched] = useState<Record<string, boolean>>({});
   const handleTravelTouch = (field: string) => setTravelDetailsTouched(prev => ({...prev, [field]: true}));
@@ -179,6 +184,35 @@ export default function TravelDashboard() {
   useEffect(() => {
     fetchDashboard();
   }, []);
+
+  const handleSavePreferences = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.patch("/api/participant/travel/details", {
+        arrival_date: travelDetailsForm.arrivalDate,
+        arrival_time: travelDetailsForm.arrivalTime,
+        arrival_airport_or_station: travelDetailsForm.arrivalStation,
+        departure_date: travelDetailsForm.departureDate,
+        departure_time: travelDetailsForm.departureTime,
+        departure_airport_or_station: travelDetailsForm.departureStation,
+        flight_or_train_number: travelDetailsForm.flightNumber,
+        pnr_number: travelDetailsForm.pnr,
+        need_airport_to_hotel_cab: travelDetailsForm.needAirportToHotelCab,
+        need_hotel_to_airport_cab: travelDetailsForm.needHotelToAirportCab,
+        need_accommodation: travelDetailsForm.needAccommodation,
+        self_arranged_accommodation: travelDetailsForm.selfArrangedAccommodation,
+        emergency_contact_name: "",
+        emergency_contact_phone: ""
+      });
+      await fetchDashboard();
+      setIsPreferencesEditing(false);
+      setPreferencesSuccessMessage("Preferences saved successfully.");
+      setTimeout(() => setPreferencesSuccessMessage(""), 4000);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save preferences.");
+    }
+  };
 
   const handleTicketUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -318,7 +352,7 @@ export default function TravelDashboard() {
     );
   }
 
-  const { budget, participant_notes, travel_schedule, hotel_name, hotel_address, hotel_contact, hotel_checkin, hotel_google_maps_url, ticket_file_url, claim } = travelData;
+  const { budget, participant_notes, travel_schedule, travel_coordinator, hotel_name, hotel_address, hotel_contact, hotel_checkin, hotel_google_maps_url, ticket_file_url, claim } = travelData;
   const participantName = participantData?.participant?.name || "Participant";
   const eventName = participantData?.event?.name || "Event";
 
@@ -335,13 +369,7 @@ export default function TravelDashboard() {
     }
   };
 
-  const scheduleItems = [
-    { label: 'Arrival & Check-in', date: formatDate(travel_schedule?.arrival_date) },
-    { label: 'Hackathon Day 1', date: formatDate(travel_schedule?.hackathon_day_1) },
-    { label: 'Hackathon Day 2', date: formatDate(travel_schedule?.hackathon_day_2) },
-    { label: 'Winner Announcement', date: formatDate(travel_schedule?.winner_announcement) },
-    { label: 'Departure', date: formatDate(travel_schedule?.departure_date) }
-  ];
+  const scheduleItems = Array.isArray(travel_schedule) && travel_schedule.length > 0 ? travel_schedule : [];
 
   const travelTimelineItems = [
     { label: 'Round 3 Qualified', isCompleted: true },
@@ -731,31 +759,45 @@ export default function TravelDashboard() {
           </div>
 
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition flex flex-col h-full">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                <MapPin className="text-blue-600" size={20} />
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                  <MapPin className="text-blue-600" size={20} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Travel Preferences</p>
+                  <p className="text-xs text-gray-500">Support Requirements</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Travel Preferences</p>
-                <p className="text-xs text-gray-500">Support Requirements</p>
-              </div>
+              {!isBackendLocked && (
+                !isPreferencesEditing ? (
+                  <button onClick={() => setIsPreferencesEditing(true)} className="text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition">Edit</button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => { setIsPreferencesEditing(false); fetchDashboard(); }} className="text-xs font-semibold text-gray-500 hover:text-gray-700 px-2 py-1">Cancel</button>
+                    <button onClick={handleSavePreferences} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition shadow-sm">Save</button>
+                  </div>
+                )
+              )}
             </div>
+
+            {preferencesSuccessMessage && <div className="text-xs font-medium text-green-700 bg-green-50 p-2 rounded-lg border border-green-100 mb-4">{preferencesSuccessMessage}</div>}
 
             <div className="space-y-3 flex-1">
               <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition cursor-pointer">
-                <input disabled={travelDetailsLocked} type="checkbox" checked={travelDetailsForm.needAirportToHotelCab} onChange={e => setTravelDetailsForm({...travelDetailsForm, needAirportToHotelCab: e.target.checked})} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50" />
+                <input disabled={preferencesLocked} type="checkbox" checked={travelDetailsForm.needAirportToHotelCab} onChange={e => setTravelDetailsForm({...travelDetailsForm, needAirportToHotelCab: e.target.checked})} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50" />
                 <span className="text-sm font-medium text-gray-900">Need Airport → Hotel Cab</span>
               </label>
               <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition cursor-pointer">
-                <input disabled={travelDetailsLocked} type="checkbox" checked={travelDetailsForm.needHotelToAirportCab} onChange={e => setTravelDetailsForm({...travelDetailsForm, needHotelToAirportCab: e.target.checked})} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50" />
+                <input disabled={preferencesLocked} type="checkbox" checked={travelDetailsForm.needHotelToAirportCab} onChange={e => setTravelDetailsForm({...travelDetailsForm, needHotelToAirportCab: e.target.checked})} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50" />
                 <span className="text-sm font-medium text-gray-900">Need Hotel → Airport Cab</span>
               </label>
               <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition cursor-pointer">
-                <input disabled={travelDetailsLocked} type="checkbox" checked={travelDetailsForm.needAccommodation} onChange={e => setTravelDetailsForm({...travelDetailsForm, needAccommodation: e.target.checked})} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50" />
+                <input disabled={preferencesLocked} type="checkbox" checked={travelDetailsForm.needAccommodation} onChange={e => setTravelDetailsForm({...travelDetailsForm, needAccommodation: e.target.checked, selfArrangedAccommodation: e.target.checked ? false : travelDetailsForm.selfArrangedAccommodation})} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50" />
                 <span className="text-sm font-medium text-gray-900">Need Accommodation</span>
               </label>
               <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition cursor-pointer">
-                <input disabled={travelDetailsLocked} type="checkbox" checked={travelDetailsForm.selfArrangedAccommodation} onChange={e => setTravelDetailsForm({...travelDetailsForm, selfArrangedAccommodation: e.target.checked})} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50" />
+                <input disabled={preferencesLocked} type="checkbox" checked={travelDetailsForm.selfArrangedAccommodation} onChange={e => setTravelDetailsForm({...travelDetailsForm, selfArrangedAccommodation: e.target.checked, needAccommodation: e.target.checked ? false : travelDetailsForm.needAccommodation})} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50" />
                 <span className="text-sm font-medium text-gray-900">Self-arranged Accommodation</span>
               </label>
             </div>
@@ -765,15 +807,19 @@ export default function TravelDashboard() {
               <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                 <div className="flex justify-between mb-1">
                   <span className="text-xs text-gray-500">Name</span>
-                  <span className="text-sm font-bold text-gray-900">Travel Team</span>
+                  <span className="text-sm font-bold text-gray-900">{travel_coordinator?.name || "Not Assigned"}</span>
                 </div>
                 <div className="flex justify-between mb-1">
                   <span className="text-xs text-gray-500">Phone</span>
-                  <span className="text-sm font-bold text-gray-900">+91 XXXXX XXXXX</span>
+                  <span className="text-sm font-bold text-gray-900">{travel_coordinator?.phone || "N/A"}</span>
+                </div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-xs text-gray-500">WhatsApp</span>
+                  <span className="text-sm font-bold text-gray-900">{travel_coordinator?.whatsapp || "N/A"}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs text-gray-500">WhatsApp</span>
-                  <span className="text-sm font-bold text-gray-900">+91 XXXXX XXXXX</span>
+                  <span className="text-xs text-gray-500">Email</span>
+                  <span className="text-sm font-bold text-gray-900 truncate max-w-[150px] text-right">{travel_coordinator?.email || "N/A"}</span>
                 </div>
               </div>
             </div>
