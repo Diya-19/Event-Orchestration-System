@@ -1,10 +1,10 @@
 // frontend/src/App.tsx
-
 import React, { useState, useEffect } from "react";
 import { api } from "./lib/api";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import TeamPage from "./pages/participant/TeamPage";
+
 // Committee Dashboard Pages
 import DashboardLayout from "./pages/Committee Dashboard/Sidebar";
 import OverviewPage from "./pages/Committee Dashboard/Dashboard";
@@ -19,6 +19,8 @@ import Results from "./pages/Committee Dashboard/Results";
 import JudgeManagement from "./pages/Committee Dashboard/JudgeManagent";
 import ActivityLogs from "./pages/Committee Dashboard/ActivityLogs";
 import TravelManagement from "./pages/Committee Dashboard/TravelManagement";
+import TravelAndLogistics from "./pages/Committee Dashboard/Travel&Logistics";
+import CommitteeTravelLayout from "./pages/Committee Dashboard/CommitteeTravelLayout";
 
 // Judge Pages
 import JudgeSidebar from "./pages/Judge/sidebar";
@@ -84,19 +86,30 @@ export default function App() {
             </RequireAuth>
           }
         >
-          <Route index element={<OverviewPage />} />
-          <Route path="participants" element={<ParticipantsPage />} />
-          <Route path="team-formation" element={<TeamFormation />} />
-          <Route path="rules" element={<RulesPage />} />
-          <Route path="multiple-events" element={<MultipleEvent />} />
-          <Route path="current-event" element={<CurrentEvent />} />
-          <Route path="communication" element={<Communication />} />
-          <Route path="scoring" element={<Scoring />} />
-          <Route path="results" element={<Results />} />
-          <Route path="judge-management" element={<JudgeManagement />} />
-          <Route path="activity-logs" element={<ActivityLogs />} />
-          <Route path="travel-management" element={<TravelManagement />} />
-        </Route>
+            <Route index element={<Navigate to="overview" replace />} />
+            
+            {/* Legacy route redirects */}
+            <Route path="travel-management" element={<Navigate to="/dashboard/travel/queries" replace />} />
+            <Route path="travel-logistics" element={<Navigate to="/dashboard/travel/logistics" replace />} />
+
+            <Route path="overview" element={<OverviewPage />} />
+            <Route path="participants" element={<ParticipantsPage />} />
+            <Route path="team-formation" element={<TeamFormation />} />
+            <Route path="rules" element={<RulesPage />} />
+            <Route path="multiple-events" element={<MultipleEvent />} />
+            <Route path="current-event" element={<CurrentEvent />} />
+            <Route path="communication" element={<Communication />} />
+            <Route path="scoring" element={<Scoring />} />
+            <Route path="results" element={<Results />} />
+            <Route path="judge-management" element={<JudgeManagement />} />
+            <Route path="activity-logs" element={<ActivityLogs />} />
+            
+            <Route path="travel" element={<CommitteeTravelLayout />}>
+              <Route index element={<Navigate to="logistics" replace />} />
+              <Route path="logistics" element={<TravelAndLogistics />} />
+              <Route path="queries" element={<TravelManagement />} />
+            </Route>
+          </Route>
 
         {/* JUDGE DASHBOARD */}
         <Route
@@ -141,6 +154,7 @@ export default function App() {
           <Route element={<RequireRound3><Outlet /></RequireRound3>}>
             <Route path="travel" element={<TravelDashboard />} />
             <Route path="notifications" element={<TravelNotifications />} />
+            <Route path="travel-queries" element={<TravelQueries />} />
           </Route>
         </Route>
 

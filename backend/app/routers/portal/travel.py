@@ -6,6 +6,7 @@ from app.models.participant import Participant
 from app.models.team import Team
 from app.models.team_member import TeamMember
 from app.models.travel import TeamTravel, TravelReimbursementClaim
+from app.models.travel_query import TravelQuery
 from app.models.event import Event
 from pydantic import BaseModel
 import datetime
@@ -239,7 +240,7 @@ def upload_ticket(
         travel_info = TeamTravel(team_id=team.id)
         db.add(travel_info)
         
-    file_url = f"/api/files/{file_path}"
+    file_url = f"/api/files/{file_path}".replace("\\", "/")
     
     travel_info.combined_ticket_url = file_url
     travel_info.combined_ticket_name = file.filename
@@ -252,6 +253,35 @@ def upload_ticket(
         "ticket_url": file_url,
         "ticket_name": file.filename
     }
+
+@router.delete("/ticket/combined")
+def delete_ticket(
+    db: Session = Depends(get_db),
+    auth_data: dict = Depends(require_round3_participant)
+):
+    team = auth_data["team"]
+    
+    travel_info = db.query(TeamTravel).filter(TeamTravel.team_id == team.id).first()
+    if not travel_info or not travel_info.combined_ticket_url:
+        raise HTTPException(status_code=404, detail="No ticket found to delete.")
+        
+    if travel_info.is_locked:
+        raise HTTPException(status_code=403, detail="Claim Under Review. Editing Disabled.")
+        
+    try:
+        file_path = travel_info.combined_ticket_url.replace("/api/files/", "")
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    except Exception as e:
+        print(f"Failed to delete physical file: {str(e)}")
+        
+    travel_info.combined_ticket_url = None
+    travel_info.combined_ticket_name = None
+    travel_info.combined_ticket_uploaded_at = None
+    db.commit()
+    
+    return {"message": "Ticket removed successfully"}
+
 
 @router.get("/claim")
 def get_claim(
@@ -320,6 +350,9 @@ def submit_claim(
     if travel_info and travel_info.is_locked:
         raise HTTPException(status_code=403, detail="Claim Under Review. Editing Disabled.")
         
+    if len(req.phone_number) != 10 or not req.phone_number.isdigit():
+        raise HTTPException(status_code=400, detail="Phone number must be exactly 10 digits.")
+        
     try:
         if len(req.ifsc_code) == 11 and req.ifsc_code.isalnum():
             url = f"https://ifsc.razorpay.com/{req.ifsc_code}"
@@ -351,6 +384,17 @@ def submit_claim(
     
     claim.status = "SUBMITTED"
     claim.submitted_at = datetime.datetime.utcnow()
+    
+    from app.services.notification import NotificationService
+    NotificationService.create(
+        db=db,
+        participant_id=auth_data["participant"].id,
+        team_id=team.id,
+        title="Reimbursement Claim Submitted",
+        message="Your travel reimbursement claim has been successfully submitted and is under review.",
+        category="Travel",
+        notification_type="travel"
+    )
     
     db.commit()
     
@@ -397,7 +441,7 @@ def upload_receipt(
     
     new_receipt = {
         "type": "receipt",
-        "url": f"/api/files/{file_path}",
+        "url": f"/api/files/{file_path}".replace("\\", "/"),
         "filename": file.filename
     }
     
@@ -482,4 +526,75 @@ def get_emergency_contacts(
     
     return {
         "emergency_contacts": emergency_contacts
+    }
+
+
+# --- Travel Queries Endpoints ---
+
+class QueryCreateRequest(BaseModel):
+    category: str
+    subject: str
+    message: str
+
+@router.get("/queries")
+def get_queries(
+    db: Session = Depends(get_db),
+    auth_data: dict = Depends(require_round3_participant)
+):
+    team = auth_data["team"]
+    
+    queries = db.query(TravelQuery).filter(
+        TravelQuery.team_id == team.id
+    ).order_by(TravelQuery.created_at.desc()).all()
+    
+    return {
+        "queries": [
+            {
+                "id": str(q.id),
+                "category": q.category,
+                "subject": q.subject,
+                "message": q.message,
+                "status": q.status,
+                "conversation": q.conversation or [],
+                "created_at": q.created_at.isoformat(),
+                "updated_at": q.updated_at.isoformat()
+            }
+            for q in queries
+        ]
+    }
+
+@router.post("/queries")
+def create_query(
+    req: QueryCreateRequest,
+    db: Session = Depends(get_db),
+    auth_data: dict = Depends(require_round3_participant)
+):
+    participant = auth_data["participant"]
+    team = auth_data["team"]
+    
+    query = TravelQuery(
+        participant_id=participant.id,
+        team_id=team.id,
+        category=req.category,
+        subject=req.subject,
+        message=req.message,
+        status="Submitted",
+        conversation=[
+            {
+                "from": "You",
+                "text": req.message,
+                "time": datetime.datetime.utcnow().isoformat(),
+                "isUser": True
+            }
+        ]
+    )
+    
+    db.add(query)
+    db.commit()
+    db.refresh(query)
+    
+    return {
+        "id": str(query.id),
+        "message": "Query submitted successfully",
+        "status": query.status
     }

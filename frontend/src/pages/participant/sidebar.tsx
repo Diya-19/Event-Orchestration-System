@@ -48,7 +48,8 @@ export default function ParticipantSidebar() {
   if (path === "/participant/travel") {
     return (
       location.pathname.startsWith("/participant/travel") ||
-      location.pathname.startsWith("/participant/notifications")
+      location.pathname.startsWith("/participant/notifications") ||
+      location.pathname.startsWith("/participant/travel-queries")
     );
   }
   return location.pathname === path;
