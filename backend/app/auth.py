@@ -19,13 +19,15 @@ def decode_token(token: str) -> dict:
 
 
 def require_committee(
-    creds: HTTPAuthorizationCredentials = Depends(_bearer),
+    creds: HTTPAuthorizationCredentials = Depends(_optional_bearer),
     db: Session = Depends(get_db),
 ) -> dict:
     """
     FastAPI dependency for all committee-authenticated routes.
     Returns a plain dict so every router uses actor["sub"] uniformly.
     """
+    if not creds:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     payload = verify_token(creds.credentials)
     sub: str = payload.get("sub", "")
     if not sub.startswith("committee:"):
@@ -85,12 +87,14 @@ def require_evaluator(
     }
 
 def require_participant(
-    creds: HTTPAuthorizationCredentials = Depends(_bearer),
+    creds: HTTPAuthorizationCredentials = Depends(_optional_bearer),
     db: Session = Depends(get_db),
 ) -> dict:
     """
     FastAPI dependency for participant-authenticated routes.
     """
+    if not creds:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     payload = verify_token(creds.credentials)
     sub: str = payload.get("sub", "")
     if not sub.startswith("participant:"):

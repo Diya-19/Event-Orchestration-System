@@ -10,3 +10,5 @@ bcrypt==4.0.1
 pydantic[email]==2.7.1
 pydantic-settings==2.2.1
 python-dotenv==1.0.1
+
+reportlab==5.2.2

@@ -61,7 +61,7 @@ def get_dashboard(
                 "id": str(team.id),
                 "name": team.name,
                 "registration_id": None,
-                "is_qualified_round_3": True
+                "is_qualified_round_3": team.is_qualified_round_3
             }
             
             # Fetch all members of this team

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   MessageCircle,
   Clock,
@@ -32,6 +33,9 @@ interface Query {
 }
 
 export default function TravelQueries() {
+  const [searchParams] = useSearchParams();
+  const queryIdFromUrl = searchParams.get("query_id");
+
   const [queries, setQueries] = useState<Query[]>([]);
   const [activeQuery, setActiveQuery] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,8 +52,12 @@ export default function TravelQueries() {
       setLoading(true);
       const res = await api.get("/api/participant/travel/queries");
       setQueries(res.data.queries || []);
-      if (res.data.queries?.length > 0 && !activeQuery) {
-        setActiveQuery(res.data.queries[0].id);
+      if (res.data.queries?.length > 0) {
+        if (queryIdFromUrl && res.data.queries.find((q: Query) => q.id === queryIdFromUrl)) {
+          setActiveQuery(queryIdFromUrl);
+        } else if (!activeQuery) {
+          setActiveQuery(res.data.queries[0].id);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch queries", err);
@@ -436,23 +444,6 @@ export default function TravelQueries() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Need Help Section */}
-      <div className="fixed bottom-6 left-6 w-64 bg-white rounded-xl border border-gray-200 p-5 shadow-lg">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center">
-            <Headphones className="w-5 h-5 text-purple-600" />
-          </div>
-          <div>
-            <h4 className="font-semibold text-gray-900">Need Help?</h4>
-            <p className="text-xs text-gray-600">Our support team is here to help you 24/7.</p>
-          </div>
-        </div>
-        <button className="w-full px-4 py-2 border border-purple-600 text-purple-700 font-medium rounded-lg hover:bg-purple-50 transition flex items-center justify-center gap-2">
-          Contact Support
-          <ChevronRight size={16} />
-        </button>
       </div>
     </div>
   );

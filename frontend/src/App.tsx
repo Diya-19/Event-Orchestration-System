@@ -1,3 +1,4 @@
+// frontend/src/App.tsx
 import React, { useState, useEffect } from "react";
 import { api } from "./lib/api";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
@@ -19,6 +20,7 @@ import JudgeManagement from "./pages/Committee Dashboard/JudgeManagent";
 import ActivityLogs from "./pages/Committee Dashboard/ActivityLogs";
 import TravelManagement from "./pages/Committee Dashboard/TravelManagement";
 import TravelAndLogistics from "./pages/Committee Dashboard/Travel&Logistics";
+import CommitteeTravelLayout from "./pages/Committee Dashboard/CommitteeTravelLayout";
 
 // Judge Pages
 import JudgeSidebar from "./pages/Judge/sidebar";
@@ -33,7 +35,7 @@ import SubmissionPage from "./pages/participant/submission";
 import HelpPage from "./pages/participant/help"; 
 import ParticipantDashboard from "./pages/participant/ParticipantDashboard";
 
-// Travel Pages
+// Travel Pages ✅ ADDED
 import TravelDashboard from "./pages/travel/Dashboard";
 import TravelNotifications from "./pages/travel/Notifications";
 import TravelQueries from "./pages/travel/TravelQueries";
@@ -50,6 +52,7 @@ function RequireRound3({ children }: { children: JSX.Element }) {
     const fetchQualification = async () => {
       try {
         const res = await api.get("/api/participant/dashboard");
+        // Safe check for the nested attribute
         if (res.data?.team?.is_qualified_round_3) {
           setIsQualified(true);
         } else {
@@ -83,20 +86,30 @@ export default function App() {
             </RequireAuth>
           }
         >
-          <Route index element={<OverviewPage />} />
-          <Route path="participants" element={<ParticipantsPage />} />
-          <Route path="team-formation" element={<TeamFormation />} />
-          <Route path="rules" element={<RulesPage />} />
-          <Route path="multiple-events" element={<MultipleEvent />} />
-          <Route path="current-event" element={<CurrentEvent />} />
-          <Route path="communication" element={<Communication />} />
-          <Route path="scoring" element={<Scoring />} />
-          <Route path="results" element={<Results />} />
-          <Route path="judge-management" element={<JudgeManagement />} />
-          <Route path="activity-logs" element={<ActivityLogs />} />
-          <Route path="travel-management" element={<TravelManagement />} />
-          <Route path="travel-logistics" element={<TravelAndLogistics />}/>
-        </Route>
+            <Route index element={<Navigate to="overview" replace />} />
+            
+            {/* Legacy route redirects */}
+            <Route path="travel-management" element={<Navigate to="/dashboard/travel/queries" replace />} />
+            <Route path="travel-logistics" element={<Navigate to="/dashboard/travel/logistics" replace />} />
+
+            <Route path="overview" element={<OverviewPage />} />
+            <Route path="participants" element={<ParticipantsPage />} />
+            <Route path="team-formation" element={<TeamFormation />} />
+            <Route path="rules" element={<RulesPage />} />
+            <Route path="multiple-events" element={<MultipleEvent />} />
+            <Route path="current-event" element={<CurrentEvent />} />
+            <Route path="communication" element={<Communication />} />
+            <Route path="scoring" element={<Scoring />} />
+            <Route path="results" element={<Results />} />
+            <Route path="judge-management" element={<JudgeManagement />} />
+            <Route path="activity-logs" element={<ActivityLogs />} />
+            
+            <Route path="travel" element={<CommitteeTravelLayout />}>
+              <Route index element={<Navigate to="logistics" replace />} />
+              <Route path="logistics" element={<TravelAndLogistics />} />
+              <Route path="queries" element={<TravelManagement />} />
+            </Route>
+          </Route>
 
         {/* JUDGE DASHBOARD */}
         <Route
@@ -144,7 +157,6 @@ export default function App() {
             <Route path="travel-queries" element={<TravelQueries />} />
           </Route>
         </Route>
-          
 
         {/* DEFAULT REDIRECT */}
         <Route path="*" element={<Navigate to="/dashboard/current-event" replace />} />

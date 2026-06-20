@@ -33,6 +33,11 @@ interface TravelData {
   claim: ClaimData | null;
   timeline: any;
   travel_schedule: any;
+  ticket_file_url?: string;
+  travel_locked?: boolean;
+  reimbursement_limit?: number;
+  travel_status?: string;
+  travel_details_submitted_at?: string;
 }
 
 interface ParticipantData {
@@ -61,7 +66,9 @@ export default function TravelDashboard() {
     needAccommodation: false,
     selfArrangedAccommodation: false
   });
-  const travelDetailsLocked = travelData?.travel_locked || false;
+  const isBackendLocked = travelData?.travel_locked || false;
+  const [isTravelDetailsEditing, setIsTravelDetailsEditing] = useState(false);
+  const travelDetailsLocked = isBackendLocked || !isTravelDetailsEditing;
 
   const [travelDetailsTouched, setTravelDetailsTouched] = useState<Record<string, boolean>>({});
   const handleTravelTouch = (field: string) => setTravelDetailsTouched(prev => ({...prev, [field]: true}));
@@ -101,6 +108,9 @@ export default function TravelDashboard() {
 
   // Modals & Inputs
   const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
+  const [isTicketDeleteModalOpen, setIsTicketDeleteModalOpen] = useState(false);
+  const [ticketDeleteSubmitting, setTicketDeleteSubmitting] = useState(false);
+  const [travelDetailsSuccessMessage, setTravelDetailsSuccessMessage] = useState("");
   const combinedTicketInputRef = useRef<HTMLInputElement>(null);
   const receiptInputRef = useRef<HTMLInputElement>(null);
 
@@ -116,6 +126,7 @@ export default function TravelDashboard() {
     other_expense: ""
   });
   const [claimFormError, setClaimFormError] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [claimSubmitting, setClaimSubmitting] = useState(false);
   const [bankPreview, setBankPreview] = useState<{bank_name: string, branch_name: string} | null>(null);
   const [ifscError, setIfscError] = useState(false);
@@ -151,6 +162,12 @@ export default function TravelDashboard() {
           needAccommodation: travelRes.data.travel_preferences?.need_accommodation || false,
           selfArrangedAccommodation: travelRes.data.travel_preferences?.self_arranged_accommodation || false
         });
+        
+        if (travelRes.data?.travel_status === "submitted" || travelRes.data?.travel_details_submitted_at) {
+          setIsTravelDetailsEditing(false);
+        } else {
+          setIsTravelDetailsEditing(true);
+        }
       }
     } catch (err: any) {
       setError("Failed to load travel dashboard");
@@ -181,6 +198,19 @@ export default function TravelDashboard() {
       fetchDashboard();
     } catch (err) {
       alert("Failed to upload ticket");
+    }
+  };
+
+  const handleRemoveTicket = async () => {
+    try {
+      setTicketDeleteSubmitting(true);
+      await api.delete("/api/participant/travel/ticket/combined");
+      setIsTicketDeleteModalOpen(false);
+      fetchDashboard();
+    } catch (err) {
+      alert("Failed to remove ticket.\nPlease try again.");
+    } finally {
+      setTicketDeleteSubmitting(false);
     }
   };
 
@@ -414,6 +444,11 @@ export default function TravelDashboard() {
                        View
                      </a>
                    )}
+                   {travelData?.combined_ticket_url && (
+                     <button onClick={() => setIsTicketDeleteModalOpen(true)} className="flex-1 py-2 bg-white text-red-600 text-sm font-semibold rounded-xl border border-gray-200 hover:bg-red-50 transition">
+                       Remove
+                     </button>
+                   )}
                    <button onClick={() => combinedTicketInputRef.current?.click()} className={`flex-1 py-2 text-sm font-semibold rounded-xl transition ${travelData?.combined_ticket_url ? 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50' : 'w-full bg-purple-50 text-purple-700 border border-purple-100 hover:bg-purple-100 flex items-center justify-center gap-2'}`}>
                      {!travelData?.combined_ticket_url && <UploadCloud size={16} />}
                      {travelData?.combined_ticket_url ? "Replace" : "Upload Ticket"}
@@ -548,6 +583,7 @@ export default function TravelDashboard() {
                   return;
                 }
                 try {
+                  const wasSubmitted = travelData?.travel_status === "submitted";
                   await api.patch("/api/participant/travel/details", {
                     arrival_date: travelDetailsForm.arrivalDate,
                     arrival_time: travelDetailsForm.arrivalTime,
@@ -565,13 +601,15 @@ export default function TravelDashboard() {
                     emergency_contact_phone: ""
                   });
                   await fetchDashboard();
+                  setIsTravelDetailsEditing(false);
+                  setTravelDetailsSuccessMessage(wasSubmitted ? "Travel details updated successfully." : "Travel details saved successfully.");
                 } catch (err) {
                   console.error(err);
                 }
               }} 
               className="space-y-4 flex-1 flex flex-col"
             >
-              {travelDetailsLocked && (
+              {isBackendLocked && (
                 <div className="p-2 rounded-lg bg-gray-50 text-gray-600 text-xs font-medium flex items-center justify-center gap-2 border border-gray-100">
                   Travel details locked by organizers.
                 </div>
@@ -635,16 +673,35 @@ export default function TravelDashboard() {
                 </div>
               </div>
 
-              <div className="mt-2 pt-3 border-t border-gray-100">
-                <button 
-                  type="submit"
-                  disabled={travelDetailsLocked || !isTravelDetailsValid}
-                  className="w-full py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 text-sm font-semibold rounded-xl transition border border-purple-100 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Save Travel Details
-                </button>
-              </div>
-            </form>
+                <div className="mt-2 pt-3 border-t border-gray-100 flex flex-col gap-2">
+                  {travelDetailsSuccessMessage && (
+                    <div className="text-center text-xs font-medium text-green-700 bg-green-50 p-2 rounded-lg border border-green-100">
+                      {travelDetailsSuccessMessage}
+                    </div>
+                  )}
+                  {!isTravelDetailsEditing && !isBackendLocked ? (
+                    <button 
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setIsTravelDetailsEditing(true);
+                        setTravelDetailsSuccessMessage("");
+                      }}
+                      className="w-full py-2 bg-white text-purple-700 hover:bg-purple-50 text-sm font-semibold rounded-xl transition border border-purple-200 flex items-center justify-center"
+                    >
+                      Edit Travel Details
+                    </button>
+                  ) : (
+                    <button 
+                      type="submit"
+                      disabled={isBackendLocked || !isTravelDetailsValid}
+                      className="w-full py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 text-sm font-semibold rounded-xl transition border border-purple-100 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {travelData?.travel_status === "submitted" ? "Update Travel Details" : "Save Travel Details"}
+                    </button>
+                  )}
+                </div>
+              </form>
           </div>
 
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition flex flex-col h-full">
@@ -726,6 +783,34 @@ export default function TravelDashboard() {
 
 
 
+      {/* Delete Ticket Confirmation Modal */}
+      {isTicketDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-xl border border-gray-100">
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Remove uploaded ticket?</h3>
+              <p className="text-sm text-gray-600 mb-6">This action cannot be undone.</p>
+              <div className="flex gap-3 justify-end">
+                <button 
+                  onClick={() => setIsTicketDeleteModalOpen(false)} 
+                  disabled={ticketDeleteSubmitting}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition border border-transparent"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleRemoveTicket}
+                  disabled={ticketDeleteSubmitting}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition disabled:opacity-50"
+                >
+                  {ticketDeleteSubmitting ? "Removing..." : "Remove"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Claim Form Modal */}
       {isClaimModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
@@ -758,7 +843,29 @@ export default function TravelDashboard() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Phone Number</label>
-                  <input disabled={travelData?.is_locked} required type="text" value={claimForm.phone_number} onChange={e => setClaimForm({...claimForm, phone_number: e.target.value})} className="w-full p-2 rounded-lg border focus:ring-1 outline-none transition disabled:bg-gray-50 disabled:text-gray-500 text-sm" />
+                  <input 
+                    disabled={travelData?.is_locked} 
+                    required 
+                    type="tel" 
+                    inputMode="numeric"
+                    value={claimForm.phone_number} 
+                    onBlur={() => setPhoneTouched(true)}
+                    onChange={(e) => {
+                      console.log("phone value", e.target.value);
+                      console.log("claimForm", claimForm.phone_number);
+                      const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setClaimForm(prev => ({
+                        ...prev,
+                        phone_number: value
+                      }));
+                    }} 
+                    className={`w-full p-2 rounded-lg border focus:ring-1 outline-none transition disabled:bg-gray-50 disabled:text-gray-500 text-sm ${
+                      phoneTouched && claimForm.phone_number.length > 0 && claimForm.phone_number.length !== 10 ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-purple-500 focus:ring-purple-500'
+                    }`} 
+                  />
+                  {phoneTouched && claimForm.phone_number.length > 0 && claimForm.phone_number.length !== 10 && (
+                    <p className="text-[10px] text-red-500 mt-1">Please enter a valid 10-digit phone number.</p>
+                  )}
                 </div>
               </div>
 
@@ -889,7 +996,7 @@ export default function TravelDashboard() {
                   {travelData?.is_locked ? "Close" : "Cancel"}
                 </button>
                 {!travelData?.is_locked && (
-                  <button type="submit" disabled={claimSubmitting || !accountsMatch || !ifscValid || totalClaimAmount > reimbursementLimit || totalClaimAmount <= 0} className="px-5 py-2 rounded-lg text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                  <button type="submit" disabled={claimSubmitting || !accountsMatch || !ifscValid || totalClaimAmount > reimbursementLimit || totalClaimAmount <= 0 || claimForm.phone_number.length !== 10} className="px-5 py-2 rounded-lg text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                     {claimSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null} 
                     Submit Claim
                   </button>

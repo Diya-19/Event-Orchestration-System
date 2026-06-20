@@ -39,10 +39,9 @@ const NAV = [
   { to: "/dashboard/scoring", label: "Scoring", icon: <FolderKanban size={18} /> },
   { to: "/dashboard/results", label: "Results", icon: <Trophy size={18} /> },
   { to: "/dashboard/activity-logs", label: "Activity Logs", icon: <Activity size={18} /> },
-  { to: "/dashboard/travel-management", label: "Travel Management", icon: <Plane size={18} /> },
+  { to: "/dashboard/travel", label: "Travel", icon: <Plane size={18} /> },
   { to: "/dashboard/rules", label: "Rules", icon: <Shield size={18} /> },
   { to: "/dashboard/team-formation", label: "Team Formation", icon: <Sparkles size={18} /> },
-  { to: "/dashboard/travel-logistics", label: "Travel & Logistics", icon: <Plane size={18} />}
 ];
 
 export default function DashboardLayout() {
