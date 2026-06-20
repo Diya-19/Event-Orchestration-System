@@ -110,11 +110,11 @@ def get_team_details(
         
     tm = db.query(TeamMember).filter(TeamMember.participant_id == participant.id).first()
     if not tm:
-        raise HTTPException(status_code=404, detail="Not assigned to a team")
-        
+        return {"team": None, "track": None, "members": []}
+
     team = db.query(Team).filter(Team.id == tm.team_id).first()
     if not team:
-        raise HTTPException(status_code=404, detail="Team not found")
+        return {"team": None, "track": None, "members": []}
 
     members_data = []
     team_members = db.query(TeamMember).filter(TeamMember.team_id == team.id).all()
@@ -197,8 +197,8 @@ def get_submission(
         
     tm = db.query(TeamMember).filter(TeamMember.participant_id == participant.id).first()
     if not tm:
-        raise HTTPException(status_code=404, detail="Not assigned to a team")
-        
+        return None
+
     submission = db.query(Submission).filter(Submission.team_id == tm.team_id).first()
     if not submission:
         return None

@@ -21,6 +21,7 @@ from app.routers.committee import (
 from app.routers.portal import judge, judge_evaluations
 from app.routers.committee import travel_logistics
 
+
 app = FastAPI(title="Event Orchestration API", version="1.0.0")
 
 # --- Middleware ---
@@ -54,9 +55,18 @@ from app.routers.portal import participant as portal_participant
 from app.routers.portal import travel as portal_travel
 from app.routers.portal import notifications as portal_notifications
 app.include_router(portal_participant.router, prefix="/api/participant", tags=["Portal - Participant"])
+<<<<<<< Updated upstream
 app.include_router(portal_notifications.router, prefix="/api/participant/notifications", tags=["Portal - Participant Notifications"])
 app.include_router(portal_travel.router, prefix="/api/participant/travel", tags=["Portal - Participant Travel"])
 # app.include_router(portal_evaluator.router, prefix="/api/portal/evaluator", tags=["Portal - Evaluator"])
+=======
+from app.routers.portal import chat as portal_chat
+app.include_router(portal_chat.router, prefix="/api/participant/chat", tags=["Portal - Chat"])
+#app.include_router(portal_evaluator.router, prefix="/api/portal/evaluator", tags=["Portal - Evaluator"])
+
+# Judge Portal Routers
+from app.routers.portal import judge, judge_evaluations
+>>>>>>> Stashed changes
 from app.routers.portal import judge as portal_judge
 app.include_router(portal_judge.router, prefix="/api/judge", tags=["Judge Portal"])
 app.include_router(judge_evaluations.router, prefix="/api/judge/evaluations", tags=["Judge Portal"])
