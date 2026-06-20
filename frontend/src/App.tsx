@@ -14,7 +14,7 @@ import CurrentEvent from "./pages/Committee Dashboard/CurrentEvent";
 import Communication from "./pages/Committee Dashboard/Communication";
 import Scoring from "./pages/Committee Dashboard/Scoring";
 import Results from "./pages/Committee Dashboard/Results";
-import JudgeManagement from "./pages/Committee Dashboard/JudgeManagent";
+import JudgeManagement from "./pages/Committee Dashboard/JudgeManagement";
 import ActivityLogs from "./pages/Committee Dashboard/ActivityLogs";
 import TravelManagement from "./pages/Committee Dashboard/TravelManagement";
 import TravelAndLogistics from "./pages/Committee Dashboard/Travel&Logistics";
