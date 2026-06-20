@@ -139,7 +139,7 @@ def request_judge_link(body: JudgeLinkRequest, db: Session = Depends(get_db)):
 
     try:
         sg = SendGridAPIClient(os.environ.get("SENDGRID_API_KEY", ""))
-        from_email = os.environ.get("FROM_EMAIL", "noreply@hackflow.app")
+        from_email = os.environ.get("FROM_EMAIL", "agrawaldiya80@gmail.com")
         message = Mail(
             from_email=from_email,
             to_emails=evaluator.email,
@@ -209,7 +209,9 @@ def request_participant_link(body: ParticipantLinkRequest, db: Session = Depends
 
     try:
         sg = SendGridAPIClient(os.environ.get("SENDGRID_API_KEY", ""))
-        from_email = os.environ.get("FROM_EMAIL", "noreply@hackflow.app")
+        from_email = os.environ.get("FROM_EMAIL", "agrawaldiya80@gmail.com")
+        if not from_email:
+            raise ValueError("FROM_EMAIL env var is not set")
         message = Mail(
             from_email=from_email,
             to_emails=participant.email,
@@ -223,6 +225,6 @@ def request_participant_link(body: ParticipantLinkRequest, db: Session = Depends
         )
         sg.send(message)
     except Exception as e:
-        print(f"Failed to send participant link email to {participant.email}: {e}")
+        print(f"ERROR: Failed to send participant link email to {participant.email}: {e}")
 
     return _GENERIC

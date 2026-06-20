@@ -23,6 +23,7 @@ from app.routers.portal import participant as portal_participant
 from app.routers.portal import evaluator as portal_evaluator
 from app.websocket_manager import manager
 
+
 app = FastAPI(title="Event Orchestration API", version="1.0.0")
 
 # --- Middleware ---
@@ -54,6 +55,8 @@ app.include_router(activity_logs.router, prefix="/api/activity-logs", tags=["Act
 
 # Public/Portal API
 app.include_router(portal_participant.router, prefix="/api/participant", tags=["Portal - Participant"])
+from app.routers.portal import chat as portal_chat
+app.include_router(portal_chat.router, prefix="/api/participant/chat", tags=["Portal - Chat"])
 #app.include_router(portal_evaluator.router, prefix="/api/portal/evaluator", tags=["Portal - Evaluator"])
 
 # Judge Portal Routers
