@@ -10,7 +10,6 @@ import OverviewPage from "./pages/Committee Dashboard/Dashboard";
 import ParticipantsPage from "./pages/Committee Dashboard/ParticipantsPage";
 import TeamFormation from "./pages/Committee Dashboard/TeamFormation";
 import RulesPage from "./pages/Committee Dashboard/Rules";
-import MultipleEvent from "./pages/Committee Dashboard/MultipleEvent";
 import CurrentEvent from "./pages/Committee Dashboard/CurrentEvent";
 import Communication from "./pages/Committee Dashboard/Communication";
 import Scoring from "./pages/Committee Dashboard/Scoring";
@@ -67,6 +66,39 @@ function RequireRound3({ children }: { children: JSX.Element }) {
   return children;
 }
 
+// JUDGE AUTH (With DEV_MODE Support)
+function RequireJudgeAuth({ children }: { children: JSX.Element }) {
+  //const isDev = import.meta.env.VITE_DEV_MODE === "true";
+  const isDev = true;
+   console.log("DEV MODE =", import.meta.env.VITE_DEV_MODE, "isDev =", isDev);
+  
+  if (isDev) {
+    return children;
+  }
+  
+  const token = localStorage.getItem("evaluator_token");
+  if (!token) {
+    // If no token exists, they shouldn't access the judge pages. 
+    // Redirecting to login as fallback, or show unauthorized.
+    return <Navigate to="/login" replace />; 
+  }
+  
+  return children;
+}
+
+// PARTICIPANT AUTH (With DEV_MODE Support)
+function RequireParticipantAuth({ children }: { children: JSX.Element }) {
+  const isDev = import.meta.env.VITE_DEV_MODE === "true";
+  if (isDev) {
+    return children;
+  }
+  const token = localStorage.getItem("participant_token");
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -87,7 +119,6 @@ export default function App() {
           <Route path="participants" element={<ParticipantsPage />} />
           <Route path="team-formation" element={<TeamFormation />} />
           <Route path="rules" element={<RulesPage />} />
-          <Route path="multiple-events" element={<MultipleEvent />} />
           <Route path="current-event" element={<CurrentEvent />} />
           <Route path="communication" element={<Communication />} />
           <Route path="scoring" element={<Scoring />} />
@@ -147,7 +178,7 @@ export default function App() {
           
 
         {/* DEFAULT REDIRECT */}
-        <Route path="*" element={<Navigate to="/dashboard/current-event" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -162,8 +162,9 @@ def get_evaluations_list(db: Session, evaluator: dict):
 
 def get_evaluation_detail(db: Session, evaluator: dict, team_id: str):
     evaluator_id = evaluator["evaluator_id"]
-    
-    team = db.query(Team).filter(Team.id == team_id).first()
+    event_id = evaluator["event_id"]
+
+    team = db.query(Team).filter(Team.id == team_id, Team.event_id == event_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
         
@@ -214,7 +215,12 @@ def get_evaluation_detail(db: Session, evaluator: dict, team_id: str):
 
 def save_evaluation_draft(db: Session, evaluator: dict, team_id: str, payload: dict):
     evaluator_id = evaluator["evaluator_id"]
-    
+    event_id = evaluator["event_id"]
+
+    team = db.query(Team).filter(Team.id == team_id, Team.event_id == event_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+
     evaluation = db.query(Evaluation).filter(
         Evaluation.team_id == team_id,
         Evaluation.evaluator_id == evaluator_id
@@ -244,7 +250,13 @@ def save_evaluation_draft(db: Session, evaluator: dict, team_id: str, payload: d
 
 def submit_evaluation(db: Session, evaluator: dict, team_id: str, payload: dict):
     evaluator_id = evaluator["evaluator_id"]
-    
+    event_id = evaluator["event_id"]
+
+    team = db.query(Team).filter(Team.id == team_id, Team.event_id == event_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+
+
     evaluation = db.query(Evaluation).filter(
         Evaluation.team_id == team_id,
         Evaluation.evaluator_id == evaluator_id
@@ -296,3 +308,4 @@ def submit_evaluation(db: Session, evaluator: dict, team_id: str, payload: dict)
         
     db.commit()
     return {"message": "Evaluation submitted"}
+ 

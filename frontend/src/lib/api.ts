@@ -27,8 +27,7 @@ api.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401) {
       const isDev = import.meta.env.VITE_DEV_MODE === "true";
-      if (isDev && err.config?.url?.startsWith("/api/judge")) {
-        // In dev mode, don't clear token or redirect for judge APIs
+      if (isDev && (err.config?.url?.startsWith("/api/judge") || err.config?.url?.startsWith("/api/participant"))) {
         return Promise.reject(err);
       }
 

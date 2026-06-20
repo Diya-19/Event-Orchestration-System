@@ -25,7 +25,6 @@ import {
   Headphones,
 } from "lucide-react";
 
-
 export default function HelpPage() {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<"Low" | "Medium" | "High">("Medium");

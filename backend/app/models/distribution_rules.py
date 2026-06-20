@@ -10,9 +10,9 @@ class EventTeamSettings(Base):
 
     id                  = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_id            = Column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), unique=True, nullable=False)
-    team_size           = Column(Integer, nullable=False, default=3)
+    min_team_size       = Column(Integer, nullable=False, default=2)
+    max_team_size       = Column(Integer, nullable=False, default=4)
     max_per_institution = Column(Integer, default=2)
-    min_per_institution = Column(Integer, default=1)
     updated_at          = Column(TIMESTAMP(timezone=True), default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
 class CustomRule(Base):

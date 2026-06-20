@@ -35,6 +35,7 @@ async def support_websocket(websocket: WebSocket):
         print("Committee disconnected")
         manager.disconnect(websocket)
 
+
 @router.get("/dashboard")
 def get_dashboard(
     db: Session = Depends(get_db),
@@ -151,6 +152,8 @@ def get_team_details(
 from pydantic import BaseModel
 from typing import Optional
 from app.models.submission import Submission
+from typing import Optional
+from datetime import date
 
 class SubmissionUpdate(BaseModel):
     github_link: Optional[str] = None
@@ -160,14 +163,13 @@ class SubmissionUpdate(BaseModel):
     is_final_submitted: Optional[bool] = False
     participant_notes: Optional[str] = None
 
-
 class SupportRequestCreate(BaseModel):
     issue_type: str
     priority: str
-    conflict_date: date | None = None
-    duration: str | None = None
-    start_time: time | None = None
-    end_time: time | None = None
+    conflict_date: Optional[date] = None
+    duration: Optional[str] = None
+    start_time: Optional[time] = None
+    end_time: Optional[time] = None
     description: str
     notify_admin: bool = True
 
@@ -307,6 +309,7 @@ def save_submission(
         "created_at": submission.created_at,
         "updated_at": submission.updated_at
     }
+
 @router.post("/support-requests")
 async def create_support_request(
     

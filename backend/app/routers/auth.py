@@ -3,12 +3,20 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
+import os
+import uuid
+from datetime import timedelta
+
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 from app.db import get_db
 from app.models.committee_user import CommitteeUser
 from app.models.evaluator import Evaluator
 from app.models.participant import Participant
 from app.services.token_service import create_access_token, verify_token
+from app.config import settings
+
 from app.auth import require_committee
 # Re-export under the legacy name so Stage 1 routers that still reference
 # get_current_committee_user continue to work without modification.
@@ -34,6 +42,14 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+class JudgeLinkRequest(BaseModel):
+    email: EmailStr
+    event_id: str
+
+class ParticipantLinkRequest(BaseModel):
+    email: EmailStr
+    event_id: str = ""
 
 
 
@@ -89,8 +105,6 @@ def verify_judge(token: str, db: Session = Depends(get_db)):
     # Return the raw token exactly as expected by the require_evaluator dependency
     return TokenResponse(access_token=token)
 
-<<<<<<< Updated upstream
-=======
 
 @router.post("/request-judge-link", status_code=status.HTTP_200_OK)
 def request_judge_link(body: JudgeLinkRequest, db: Session = Depends(get_db)):
@@ -145,7 +159,6 @@ def request_judge_link(body: JudgeLinkRequest, db: Session = Depends(get_db)):
 
     return _GENERIC_RESPONSE
 
->>>>>>> Stashed changes
 @router.post("/participant-login", response_model=TokenResponse)
 def participant_login(body: LoginRequest, db: Session = Depends(get_db)):
 
@@ -161,27 +174,20 @@ def participant_login(body: LoginRequest, db: Session = Depends(get_db)):
     if participant:
         print("DB TOKEN:", participant.portal_token)
 
+@router.post("/participant-login", response_model=TokenResponse)
+def participant_login(body: LoginRequest, db: Session = Depends(get_db)):
+    participant = db.query(Participant).filter(Participant.email == body.email).first()
     if not participant or participant.portal_token != body.password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
-
-    token = create_access_token({
-        "sub": f"participant:{participant.id}",
-        "email": participant.email,
-        "role": "participant"
-    })
-
-    return TokenResponse(access_token=token)
     token = create_access_token({
         "sub": f"participant:{participant.id}",
         "email": participant.email,
         "role": "participant"
     })
     return TokenResponse(access_token=token)
-<<<<<<< Updated upstream
-=======
 
 
 @router.get("/verify-participant", response_model=TokenResponse)
@@ -239,4 +245,3 @@ def request_participant_link(body: ParticipantLinkRequest, db: Session = Depends
         print(f"ERROR: Failed to send participant link email to {participant.email}: {e}")
 
     return _GENERIC
->>>>>>> Stashed changes

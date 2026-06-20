@@ -28,6 +28,8 @@ from app.models.travel import TeamTravel
 from app.models.notification import Notification
 from app.models.travel_query import TravelQuery
 
+from app.models.submission import Submission
+
 __all__ = [
 
     "CommitteeUser",

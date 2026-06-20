@@ -62,14 +62,88 @@ def trigger_team_generation(
         raise HTTPException(409, "Teams already generated. Clear them first.")
 
     if method == "ai":
-        # Future LLM implementation
-        # generate_teams_task.delay(str(event_id))
-        return {"message": "AI Team generation queued"}
+        from app.services.llm_service import generate_teams_with_llm
+        from app.models.distribution_rules import CustomRule
+
+        settings = db.execute(
+            select(EventTeamSettings).where(EventTeamSettings.event_id == event_id)
+        ).scalar_one_or_none()
+
+        rules = db.execute(
+            select(CustomRule).where(CustomRule.event_id == event_id)
+        ).scalars().all()
+
+        participants = db.execute(
+            select(Participant).where(Participant.event_id == event_id)
+        ).scalars().all()
+
+        if not participants:
+            raise HTTPException(400, "No participants registered for this event.")
+
+        participants_data = [
+            {
+                "id": str(p.id),
+                "name": p.name,
+                "institution": p.institution or "Unknown",
+                "skills": p.skills or [],
+                "experience": p.experience or "Not specified",
+            }
+            for p in participants
+        ]
+
+        settings_data = {
+            "min_team_size": settings.min_team_size if settings else 2,
+            "max_team_size": settings.max_team_size if settings else 4,
+            "max_per_institution": settings.max_per_institution if settings else 2,
+        }
+
+        rules_data = [
+            {"title": r.title, "category": r.category, "description": r.description}
+            for r in rules
+        ]
+
+        try:
+            ai_teams = generate_teams_with_llm(participants_data, settings_data, rules_data)
+        except Exception as e:
+            raise HTTPException(500, f"AI team generation failed: {str(e)}")
+
+        participant_lookup = {str(p.id): p for p in participants}
+        assigned: set[str] = set()
+        last_team = None
+
+        for i, td in enumerate(ai_teams, start=1):
+            team = Team(
+                event_id=event_id,
+                name=td.get("name", f"Team {i}"),
+                rationale=td.get("rationale", ""),
+                status="draft",
+            )
+            db.add(team)
+            db.flush()
+            last_team = team
+
+            for pid in td.get("member_ids", []):
+                if pid in participant_lookup and pid not in assigned:
+                    db.add(TeamMember(
+                        team_id=team.id,
+                        participant_id=participant_lookup[pid].id,
+                        role="member",
+                    ))
+                    assigned.add(pid)
+
+        # Safety net: assign any participants the LLM missed to the last team
+        missed = [p for p in participants if str(p.id) not in assigned]
+        if missed and last_team:
+            for p in missed:
+                db.add(TeamMember(team_id=last_team.id, participant_id=p.id, role="member"))
+
+        db.commit()
+        return {"message": f"AI generated {len(ai_teams)} teams successfully."}
 
     elif method == "random":
         # --- SIMPLE MATCHING ALGORITHM ---
         settings = db.execute(select(EventTeamSettings).where(EventTeamSettings.event_id == event_id)).scalar_one_or_none()
-        team_size = settings.team_size if settings else 4
+        team_size = settings.max_team_size if settings else 4
         max_inst = settings.max_per_institution if settings else 2
 
         participants = db.execute(select(Participant).where(Participant.event_id == event_id)).scalars().all()
@@ -146,7 +220,7 @@ def get_formation_summary(
     latest_team = db.execute(select(Team).where(Team.event_id == event_id).order_by(Team.created_at.desc())).scalars().first()
     
     settings = db.execute(select(EventTeamSettings).where(EventTeamSettings.event_id == event_id)).scalar_one_or_none()
-    target_size = settings.team_size if settings else 4
+    target_size = settings.max_team_size if settings else 4
 
     return {
         "total_participants": total_participants or 0,
@@ -201,6 +275,30 @@ def clear_all_teams(
     teams = db.execute(select(Team).where(Team.event_id == event_id)).scalars().all()
     for team in teams:
         db.delete(team)
-    
+
     db.commit()
     return {"message": "All teams cleared successfully"}
+
+
+# --- 6. NOTIFY PARTICIPANTS IN APPROVED TEAMS ---
+
+@router.post("/notify-participants")
+def notify_participants(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_committee),
+):
+    from app.tasks.communication_tasks import notify_participants_task
+
+    approved_count = db.execute(
+        select(func.count(Team.id)).where(
+            Team.event_id == event_id,
+            Team.status == "approved",
+        )
+    ).scalar()
+
+    if not approved_count:
+        raise HTTPException(400, "No approved teams found. Approve teams first.")
+
+    notify_participants_task.delay(str(event_id))
+    return {"message": f"Notification queued for participants in {approved_count} approved team(s)."}
