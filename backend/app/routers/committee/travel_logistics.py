@@ -266,12 +266,12 @@ def get_team_details(
             "accountNumber": reimbursement.account_number if reimbursement else None,
             "ifsc": reimbursement.ifsc_code if reimbursement else None,
             "file": (
-                reimbursement.receipts[0].get("file_name", "receipt.pdf")
+                reimbursement.receipts[0].get("filename", "receipt.pdf")
                 if reimbursement and reimbursement.receipts and len(reimbursement.receipts) > 0
                 else None
             ),
             "receiptUrl": (
-                reimbursement.receipts[0].get("file_url")
+                reimbursement.receipts[0].get("url")
                 if reimbursement and reimbursement.receipts and len(reimbursement.receipts) > 0
                 else None
             )
@@ -337,6 +337,15 @@ def lock_team_travel(
     else:
         travel.is_locked = True
         
+    notification = Notification(
+        team_id=team.id,
+        title="Travel Locked",
+        message="Your travel form has been locked by the committee. You can no longer edit your travel preferences.",
+        category="Travel",
+        notification_type="travel"
+    )
+    db.add(notification)
+        
     db.commit()
     return {"success": True, "locked": True}
 
@@ -352,6 +361,16 @@ def unlock_team_travel(
     travel = db.query(TeamTravel).filter(TeamTravel.team_id == team.id).first()
     if travel:
         travel.is_locked = False
+        
+        notification = Notification(
+            team_id=team.id,
+            title="Travel Unlocked",
+            message="Your travel form has been unlocked by the committee. You can now edit your travel preferences.",
+            category="Travel",
+            notification_type="travel"
+        )
+        db.add(notification)
+        
         db.commit()
         
     return {"success": True, "locked": False}
@@ -385,6 +404,18 @@ def assign_hotel(team_id: str, req: HotelAssignmentRequest, db: Session = Depend
     travel.hotel_name = req.hotel_name
     travel.hotel_address = req.hotel_address
     travel.hotel_checkin_time = req.check_in_date
+    
+    notification = Notification(
+        team_id=team.id,
+        title="Hotel Assigned",
+        message=f"Your team has been assigned accommodation at {req.hotel_name}.",
+        category="Travel",
+        notification_type="travel"
+    )
+    db.add(notification)
+    
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(travel, "accommodation")
     
     db.commit()
     return {"success": True}

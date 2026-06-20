@@ -120,6 +120,7 @@ export default function TravelQueries() {
       Submitted: "bg-gray-100 text-gray-700",
       "Under Review": "bg-blue-100 text-blue-700",
       "Committee Replied": "bg-indigo-100 text-indigo-700",
+      "In Progress": "bg-indigo-100 text-indigo-700",
       Resolved: "bg-green-100 text-green-700",
       Escalated: "bg-red-100 text-red-700"
     };
@@ -129,7 +130,7 @@ export default function TravelQueries() {
   const stats = [
     { icon: MessageCircle, label: "Total Queries", value: queries.length, color: "purple" },
     { icon: Clock, label: "Under Review", value: queries.filter((q) => q.status === "Under Review").length, color: "blue" },
-    { icon: MessageCircle, label: "Committee Replied", value: queries.filter((q) => q.status === "Committee Replied").length, color: "indigo" },
+    { icon: MessageCircle, label: "Committee Replied", value: queries.filter((q) => q.status === "Committee Replied" || q.status === "In Progress").length, color: "indigo" },
     { icon: CheckCircle2, label: "Resolved", value: queries.filter((q) => q.status === "Resolved").length, color: "green" }
   ];
 
@@ -156,7 +157,9 @@ export default function TravelQueries() {
   const getTimeline = (status: string) => {
     const steps = ["Submitted", "Under Review", "Committee Replied", "Resolved"];
     let currentIndex = steps.indexOf(status);
-    if (status === "Escalated") {
+    if (status === "In Progress") {
+      currentIndex = 2;
+    } else if (status === "Escalated") {
       currentIndex = activeQueryData?.conversation?.some((m: any) => !m.isUser) ? 2 : 1;
     }
     return steps.map((step, index) => ({
@@ -367,17 +370,17 @@ export default function TravelQueries() {
 
               {/* Messages */}
               <div className="space-y-4 mb-4 max-h-96 overflow-y-auto">
-                {activeQueryData.conversation.map((msg, index) => (
+                {activeQueryData.conversation.map((msg: any, index: number) => (
                   <div key={index} className={msg.isUser ? "text-right" : "text-left"}>
-                    <p className="text-xs font-medium text-gray-600 mb-1">{msg.from}</p>
+                    <p className="text-xs font-medium text-gray-600 mb-1">{msg.from || msg.sender}</p>
                     <div
                       className={`inline-block p-3 rounded-xl text-left max-w-full ${
                         msg.isUser ? "bg-purple-100 text-gray-900" : "bg-gray-100 text-gray-900"
                       }`}
                     >
-                      <p className="text-sm">{msg.text}</p>
+                      <p className="text-sm">{msg.text || msg.message}</p>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{formatDate(msg.time)}</p>
+                    <p className="text-xs text-gray-500 mt-1">{formatDate(msg.time || msg.timestamp)}</p>
                   </div>
                 ))}
               </div>
